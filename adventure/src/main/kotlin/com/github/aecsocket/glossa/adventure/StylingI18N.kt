@@ -1,6 +1,6 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.core.MultilineI18N
+import com.github.aecsocket.glossa.core.I18NContext
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
@@ -24,12 +24,12 @@ class StylingI18N(
     override fun doGet(
         locale: Locale,
         key: String,
-        args: Map<String, () -> List<Component>>
+        args: Map<String, (I18NContext<List<Component>>) -> List<Component>>
     ) = translations[locale]?.get(key)?.let { tl ->
         val format = formats[key] ?: Format.IDENTITY
         val defaultStyle = format.default?.let { styles[it] }
 
-        MultilineI18N.parse(tl, key, args, {
+        parse(locale, tl, key, args, {
             text(it).defaultStyle(defaultStyle)
         }, { idx, tokens, post ->
             val result = text()

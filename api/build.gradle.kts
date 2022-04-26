@@ -3,6 +3,11 @@ plugins {
     id("maven-publish")
 }
 
+dependencies {
+    testImplementation(kotlin("test"))
+    testImplementation(libs.bundles.adventure)
+}
+
 publishing {
     publications {
         create<MavenPublication>("maven") {

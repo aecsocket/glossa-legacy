@@ -8,13 +8,13 @@ class StringI18N(
     override fun doGet(
         locale: Locale,
         key: String,
-        args: Map<String, () -> List<String>>
+        args: Map<String, (I18NContext<List<String>>) -> List<String>>
     ) = translations[locale]?.get(key)?.let { tl ->
-        MultilineI18N.parse(tl, key, args, { it }, { idx, tokens, post ->
+        parse(locale, tl, key, args, { it }, { idx, tokens, post ->
             tokens.joinToString("") { token -> token.pre + token.value[idx] } + post
         })
     }
 
-    override fun safe(locale: Locale, key: String, args: Map<String, () -> List<String>>) =
+    override fun safe(locale: Locale, key: String, args: Map<String, (I18NContext<List<String>>) -> List<String>>) =
         get(locale, key, args) ?: listOf(key)
 }
