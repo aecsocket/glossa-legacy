@@ -2,6 +2,9 @@ package com.github.aecsocket.glossa.core
 
 import java.util.Locale
 
+open class I18NException(val key: String, message: String) :
+    RuntimeException("($key) $message")
+
 interface I18N<T> {
     var locale: Locale
 
@@ -53,7 +56,7 @@ abstract class AbstractI18N<T>(
             cache[locale]?.let { cache -> cache[key]?.let { return it } }
         }
 
-        return doGet(locale, key, args)?.also {
+        return (doGet(locale, key, args) ?: doGet(this.locale, key, args))?.also {
             if (caches) {
                 cache.computeIfAbsent(locale) { HashMap() }[key] = it
             }
@@ -69,4 +72,10 @@ abstract class AbstractI18N<T>(
     override fun clear() {
         cache.clear()
     }
+}
+class ArgCache<T>(private val args: Map<String, () -> T>) {
+    private val cache = HashMap<String, T?>()
+
+    operator fun get(i18nKey: String, arg: String) =
+        cache.computeIfAbsent(arg) { args[it]?.invoke() }
 }

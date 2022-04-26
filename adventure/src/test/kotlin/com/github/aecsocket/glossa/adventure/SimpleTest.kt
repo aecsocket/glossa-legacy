@@ -1,6 +1,7 @@
 package com.github.aecsocket.glossa.adventure
 
 import com.github.aecsocket.glossa.core.I18N
+import com.github.aecsocket.glossa.core.StringI18N
 import com.github.aecsocket.glossa.core.Translation
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
@@ -29,6 +30,18 @@ class SimpleTest {
                 "user" to { listOf(text("Steve"), text("Alex")) }
             ) }
         ].serialize("transactions"))
+
+        val stringI18N = StringI18N()
+        stringI18N.register(Translation(Locale.ROOT, mapOf(
+            "transactions" to listOf("Your transactions:", "  \${transactions}"),
+            "transaction" to listOf("Tx of $\${amount} from \${user} received")
+        )))
+
+        stringI18N["transactions",
+            "transactions" to { stringI18N.safe("transaction",
+                "amount" to { listOf("15", "30") },
+                "user" to { listOf("Steve", "Alex") }) }
+        ]?.forEach { println(it) }
     }
 }
 
