@@ -30,9 +30,6 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            .gradle/caches/VanillaGradle
-            .gradle/loom-cache
-            paper/.gradle/caches/paperweight
           key: ${{ runner.os }}-gradle-${{ secrets.CACHE_VERSION }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-${{ secrets.CACHE_VERSION }}-
@@ -68,13 +65,13 @@ jobs:
         env:
           GPR_ACTOR: "${{ github.actor }}"
           GPR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      - name: "Publish docs"
-        # If:
-        #  * is a release
-        #  * or is a snapshot AND is on main branch
-        if: "${{ (env.STATUS == 'release' && github.event_name == 'release') || (env.STATUS != 'release' && github.event_name != 'release' && github.ref == 'refs/heads/main') }}"
-        uses: JamesIves/github-pages-deploy-action@v4.2.2
-        with:
-          branch: gh-pages
-          folder: build/docs/aggregateJavadoc
-          target-folder: docs
+      #- name: "Publish docs"
+      #  # If:
+      #  #  * is a release
+      #  #  * or is a snapshot AND is on main branch
+      #  if: "${{ (env.STATUS == 'release' && github.event_name == 'release') || (env.STATUS != 'release' && github.event_name != 'release' && github.ref == 'refs/heads/main') }}"
+      #  uses: JamesIves/github-pages-deploy-action@v4.2.2
+      #  with:
+      #    branch: gh-pages
+      #    folder: build/docs/aggregateJavadoc
+      #    target-folder: docs
