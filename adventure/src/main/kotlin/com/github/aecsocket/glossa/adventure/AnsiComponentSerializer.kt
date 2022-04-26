@@ -109,7 +109,7 @@ object AnsiComponentRenderer {
                 styles.pop()
             }
         })
-        return result.toString()
+        return "${result}${START}${RESET}${END}"
     }
 
     fun render(like: ComponentLike) = render(like.asComponent())

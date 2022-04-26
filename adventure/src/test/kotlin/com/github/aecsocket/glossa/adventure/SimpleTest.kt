@@ -7,6 +7,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.Style.style
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
@@ -18,22 +19,26 @@ class SimpleTest {
     fun doTest() {
         val i18n = StylingI18N()
         i18n.register(Translation(Locale.ROOT, mapOf(
-            "transactions" to listOf("Your transactions:", "  a: \${transaction} b: \${transactions}"),
+            "transactions" to listOf("Your transactions:", "  \${transactions}"),
             "transaction" to listOf("Tx of $\${amount} from \${user} received"),
             "il_transactions" to listOf("Your tx's:", "  \${transaction")
         )))
 
-        println(i18n["transaction",
-            "amount" to { listOf(text("15"), text(30)) },
-            "user" to { listOf(text("Steve"), text("Alice")) }
-        ].serialize("transaction"))
+        i18n.styles["header"] = style(NamedTextColor.GREEN)
+        i18n.styles["info"] = style(NamedTextColor.GRAY)
+        i18n.styles["var"] = style(NamedTextColor.YELLOW)
+
+        i18n.formats["transactions"] = StylingI18N.Format("header")
+        i18n.formats["transaction"] = StylingI18N.Format("info",
+            "amount" to "var",
+            "user" to "var")
 
         println(i18n["transactions",
             "transactions" to { i18n.safe("transaction",
                 "amount" to { listOf(text("15"), text("30")) },
                 "user" to { listOf(text("Steve"), text("Alex")) }
             ) }
-        ].serialize("transactions"))
+        ].ansi("transactions"))
 
         val stringI18N = StringI18N()
         stringI18N.register(Translation(Locale.ROOT, mapOf(
@@ -65,4 +70,10 @@ fun List<Component>?.serialize(key: String) = if (this == null) """[ $key
   (no lines created)
 ]""" else """[ key = $key
 ${joinToString("\n") { " >${it.serialize()}<" }}
+]"""
+
+fun List<Component>?.ansi(key: String) = if (this == null) """[ $key
+   (no lines created)
+]""" else """[ $key
+${joinToString("\n") { "  >${it.ansi()}<" }}
 ]"""
