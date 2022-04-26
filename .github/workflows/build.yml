@@ -61,7 +61,7 @@ jobs:
         #  * is a release
         #  * or is a snapshot AND is on main/release branch
         if: "${{ (env.STATUS == 'release' && github.event_name == 'release') || (env.STATUS != 'release' && github.event_name != 'release' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/'))) }}"
-        run: ./gradlew publish aggregateJavadoc
+        run: ./gradlew publish # aggregateJavadoc
         env:
           GPR_ACTOR: "${{ github.actor }}"
           GPR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

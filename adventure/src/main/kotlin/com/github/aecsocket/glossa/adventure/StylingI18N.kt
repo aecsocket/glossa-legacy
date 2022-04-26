@@ -23,10 +23,20 @@ class StylingI18N(
         key: String,
         args: Map<String, () -> List<Component>>
     ) = translations[locale]?.get(key)?.let { tl ->
-        MultilineI18N.parse(tl, key, args, { text(it) }, { idx, tokens, post ->
+        val format = formats[key] ?: Format.IDENTITY
+        val defaultStyle = format.default?.let { styles[it] }
+
+        MultilineI18N.parse(tl, key, args, {
+            text(it).style(defaultStyle)
+        }, { idx, tokens, post ->
             val result = text()
-            tokens.forEach { result.append(text(it.pre)).append(it.value[idx]) }
+            tokens.forEach { token -> result
+                .append(text(token.pre))
+                .append(token.value[idx].style(styles[format.args[token.key]]))
+            }
             (result + text(post)).build()
         })
     }
 }
+
+private fun Component.style(style: Style?) = style?.let { applyFallbackStyle(it) } ?: this

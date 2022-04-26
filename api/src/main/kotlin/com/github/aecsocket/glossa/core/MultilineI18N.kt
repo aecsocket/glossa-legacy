@@ -1,5 +1,7 @@
 package com.github.aecsocket.glossa.core
 
+import java.util.Locale
+
 class MultilineI18NException(key: String, val row: Int, message: String) :
     I18NException(key, "${row+1}: $message")
 
@@ -15,12 +17,8 @@ interface MultilineI18N<E> : I18N<List<E>> {
             val lines = ArrayList<E>()
             val argCache = ArgCache(args)
             tl.forEachIndexed { row, line ->
-                val tokens: List<Templater.Token<List<E>>>
-                val postTokens: String
-                try {
-                    val result = Templater.template(line) { argCache[key, it] }
-                    tokens = result.tokens
-                    postTokens = result.post
+                val (tokens, postTokens) = try {
+                    Templater.template(line) { argCache[key, it] }
                 } catch (ex: TemplatingException) {
                     throw MultilineI18NException(key, row, ex.message)
                 }

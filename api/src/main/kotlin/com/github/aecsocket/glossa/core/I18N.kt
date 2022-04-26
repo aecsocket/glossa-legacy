@@ -2,7 +2,7 @@ package com.github.aecsocket.glossa.core
 
 import java.util.Locale
 
-open class I18NException(val key: String, message: String) :
+open class I18NException(key: String, message: String) :
     RuntimeException("($key) $message")
 
 interface I18N<T> {

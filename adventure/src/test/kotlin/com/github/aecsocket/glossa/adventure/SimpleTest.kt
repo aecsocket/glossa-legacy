@@ -5,6 +5,10 @@ import com.github.aecsocket.glossa.core.StringI18N
 import com.github.aecsocket.glossa.core.Translation
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.TextComponent
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.junit.jupiter.api.Test
 import java.util.Locale
@@ -42,6 +46,17 @@ class SimpleTest {
                 "amount" to { listOf("15", "30") },
                 "user" to { listOf("Steve", "Alex") }) }
         ]?.forEach { println(it) }
+
+        println(text()
+            .append(text("", NamedTextColor.YELLOW)
+                .append(text("Well, "))
+                .append(text("hello ", NamedTextColor.RED))
+                .append(text("Steve", NamedTextColor.BLUE))
+                .append(text("! You have ")
+                .append(text("1 ", null, TextDecoration.BOLD))
+                .append(text("new", NamedTextColor.RED, TextDecoration.UNDERLINED, TextDecoration.ITALIC))
+                .append(text(" message.")))
+            ).ansi())
     }
 }
 
