@@ -7,7 +7,7 @@ plugins {
 allprojects {
     group = "com.github.aecsocket"
     version = "0.0.1-SNAPSHOT"
-    description = "Simple localization library"
+    description = "Kotlin localization library"
 }
 
 subprojects {

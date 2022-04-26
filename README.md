@@ -9,7 +9,8 @@
 
 </div>
 
-Simple localization library, with support for Adventure styling.
+Kotlin localization library, with support for Adventure styling.
+
 Because there weren't enough localization libraries already.
 
 # Usage
