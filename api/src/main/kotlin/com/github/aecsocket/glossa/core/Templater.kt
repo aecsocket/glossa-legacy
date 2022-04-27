@@ -1,7 +1,7 @@
 package com.github.aecsocket.glossa.core
 
-const val TEMPLATE_ENTER = "\${"
-const val TEMPLATE_EXIT = "}"
+const val TEMPLATE_ENTER = "<"
+const val TEMPLATE_EXIT = ">"
 
 class TemplatingException(col: Int, override val message: String)
     : RuntimeException("$col: message")

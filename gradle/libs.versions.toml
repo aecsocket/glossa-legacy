@@ -2,12 +2,16 @@
 
 junit = "5.7.2"
 
+icu4j = "68.1"
+
 adventure = "4.10.0"
 
 [libraries]
 
 jupiterApi = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
 jupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
+
+icu4j = { group = "com.ibm.icu", name = "icu4j", version.ref = "icu4j" }
 
 adventureApi = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
 adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-serializer-gson", version.ref = "adventure" }
