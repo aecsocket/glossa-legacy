@@ -167,89 +167,42 @@ class StringI18NTest {
     }
 
 
-    sealed interface Node
+    sealed interface Node {
+        val children: List<Node>
+    }
+
+    sealed interface MutableNode : Node {
+        override val children: MutableList<Node>
+    }
 
     data class TextNode(val value: String) : Node {
+        override val children = emptyList<Node>()
+
         override fun toString() = "\"$value\""
     }
 
-    sealed interface ParentNode : Node {
-        val children: MutableList<Node>
-    }
-
-    data class RootNode(override val children: MutableList<Node> = mutableListOf()) : ParentNode {
+    data class RootNode(override val children: MutableList<Node> = mutableListOf()) : MutableNode {
         override fun toString() = children.toString()
     }
 
     data class ScopedNode(
         val label: String,
         val separator: String,
-        override val children: MutableList<Node> = mutableListOf()
-    ) : ParentNode {
-        override fun toString() = "@$label${children}"
+        override val children: MutableList<Node> = mutableListOf(),
+    ) : MutableNode {
+        override fun toString() = "@$label$children"
     }
 
     @Test
     fun todoRemove() {
-        /*val i18n = i18n()
-        val buf = StringBuffer()
-        println("Purchases:")
-        val fmt = "  You made {purchases, plural, one {# purchase} other {# purchases}} on {date, date, ::dMMM}"
-        println(MessageFormat(fmt, Locale.US).format("purchases" to 4, "date" to Date(System.currentTimeMillis())))
-        println(MessageFormat(fmt, Locale.US).format("purchases" to 1, "date" to Date(System.currentTimeMillis())))
-
-        i18n[PLURAL,
-            "date" to { listOf(Date(System.currentTimeMillis())) },
-            "items" to { listOf(4, 1) },
-            "time" to { listOf(Date(System.currentTimeMillis()), Date(System.currentTimeMillis())) }]
-        ?.forEach { println(it) } ?: println("null")
-
-        /*val format = listOf(
-            "Purchases on {date, date, ::dMMM}:",
-            "  {<group.amount>, plural, one {# purchase} other {# purchases}} at {<group.time>, time, ::jmm}",
-            "    - Item '{<group.item.name>}' x{<group.item.amount>, number, integer}",
-            "End of purchases")*/
-
-
-        val date = Date(System.currentTimeMillis())
-        i18n[PURCHASES,
-            "date" to { date },
-            "group" to { listOf(mapOf(
-                "amount" to { 5 }, "time" to { date }, "item" to { listOf(
-                    mapOf("name" to { "Game One" }, "amount" to { 1 }),
-                    mapOf("name" to { "Game Two" }, "amount" to { 4 })) }
-            ), mapOf(
-                "amount" to { 1 }, "time" to { date }, "item" to { listOf(
-                    mapOf("name" to { "Table" }, "amount" to { 1 })) }
-            )) }]
-
-        val out = """
-            Purchases on 27 Apr:
-              5 purchases at 11:03
-                - Item 'Game One' x1
-                - Item 'Game Two' x4
-              1 purchase at 11:03
-                - Item 'Table' x1
-            End of purchases
-        """.trimIndent()*/
-
-        /*
-        - Purchases on {date, date, ::dMMM}:
-        - {amt, plural..} at {time, time, ::jmm}
-        -   - '{name}' x{amount}
-         */
-
         class ParsingException(row: Int, col: Int, message: String) : RuntimeException("${row+1}:${col+1}: $message") {
             constructor(string: String, idx: Int, message: String) :
                     // todo i dont like this
                 this(string.rowColOf(idx).row, string.rowColOf(idx).col, message)
         }
 
-
-
-        fun i18n(format: String, args: Map<String, () -> Any>): String {
-            // step 1. build node tree
-            fun buildWalk(sIdx: Int, parent: ParentNode, depth: Int): Int {
+        fun parse(format: String): RootNode {
+            fun buildWalk(parent: MutableNode, sIdx: Int = 0, path: List<String> = emptyList()): Int {
                 var idx = sIdx
                 while (true) {
                     val enter = format.indexOf(SCOPE_ENTER, idx)
@@ -260,7 +213,6 @@ class StringI18NTest {
 
                         data class IndexGet(val labelExit: Int, val metaEnter: Int, val metaExit: Int)
 
-                        // todo my god this is a mess
                         val (labelExit, metaEnter, metaExit) = run {
                             for (cur in labelEnter until format.length) {
                                 val ch = format[cur]
@@ -271,7 +223,8 @@ class StringI18NTest {
                                         return@run IndexGet(cur,
                                             cur + 1,
                                             format.lastEnterExit(cur + 1, SCOPE_SEPARATOR_ENTER, SCOPE_SEPARATOR_EXIT)
-                                                ?: throw ParsingException(format, cur, "Unbalanced brackets in scope label definition"))
+                                                ?: throw ParsingException(format, cur,
+                                                    "Unbalanced brackets in scope label definition"))
                                     }
                                     !LABEL_CHARS.contains(ch) -> throw ParsingException(format, cur,
                                         "Illegal character in label name: found '$ch', allowed [$LABEL_CHARS]")
@@ -282,13 +235,13 @@ class StringI18NTest {
                         val label = format.substring(labelEnter, labelExit)
                         val separator = format.substring(metaEnter, metaExit)
                         val node = ScopedNode(label, separator).also { parent.children.add(it) }
-                        idx = buildWalk(metaExit + 1, node, depth + 1) + SCOPE_EXIT.length
+                        idx = buildWalk(node, metaExit + 1, path + label) + SCOPE_EXIT.length
                     } else if (exit != -1 && (enter == -1 || exit < enter)) {
-                        if (depth == 0)
+                        if (path.isEmpty())
                             throw ParsingException(format, exit, "Too many exits")
                         parent.children.add(TextNode(format.substring(idx, exit)))
                         return exit
-                    } else if (depth > 0) {
+                    } else if (path.isNotEmpty()) {
                         throw ParsingException(format, format.length, "Too many entrances")
                     } else {
                         parent.children.add(TextNode(format.substring(idx)))
@@ -297,53 +250,88 @@ class StringI18NTest {
                 }
             }
 
-            val root = RootNode()
-            buildWalk(0, root, 0)
-
-            // step 2. build format lines
-            fun buildFormat(node: Node, args: Map<String, () -> Any>): String = when (node) {
-                is TextNode -> {
-                    val builtArgs = HashMap<String, Any?>()
-                    args.forEach { (key, value) ->
-                        // todo parse each template individually cause tokenization (for component thing)
-                        if (node.value.contains("{$key")) { // ICU template start
-                            builtArgs[key] = value.invoke()
-                        }
-                    }
-                    MessageFormat(node.value, Locale.US).asString(builtArgs)
-                }
-                is ScopedNode -> {
-                    fun addArg(arg: Map<String, () -> Any>) =
-                        node.children.joinToString("") { buildFormat(it, arg) }
-
-                    args[node.label]?.let { arg ->
-                        when (val value = arg.invoke()) {
-                            is Collection<*> -> {
-                                value as Collection<Map<String, () -> Any>>
-                                value.joinToString(node.separator) { addArg(it) }
-                            }
-                            is Map<*, *> -> {
-                                addArg(value as Map<String, () -> Any>)
-                            }
-                            else -> throw IllegalStateException("Using arg '${node.label}' as scope (must be list of maps, or map)")
-                        }
-                    } ?: ""
-                }
-                is ParentNode -> node.children.joinToString("") { buildFormat(it, args) }
+            return RootNode().apply {
+                buildWalk(this)
             }
-
-            return buildFormat(root, args)
         }
 
-        fun i18n(format: String, vararg args: Pair<String, () -> Any>) = i18n(format, args.associate { it })
+        data class Token(val key: List<String>, val value: String)
+
+        fun format(node: Node, args: Map<String, () -> Any>, path: List<String> = emptyList()): List<Token> = when (node) {
+            is TextNode -> {
+                val builtArgs = HashMap<String, Any?>()
+                args.forEach { (key, value) ->
+                    // todo parse each template individually cause tokenization (for component thing)
+                    if (node.value.contains("{$key")) { // ICU template start
+                        builtArgs[key] = value.invoke()
+                    }
+                }
+                listOf(Token(path + BASE, MessageFormat(node.value, Locale.US).asString(builtArgs)))
+            }
+            is ScopedNode -> {
+                fun addArg(arg: Map<String, () -> Any>) =
+                    node.children.flatMap { format(it, arg, path + node.label) }
+
+                args[node.label]?.let { arg ->
+                    @Suppress("UNCHECKED_CAST") // cast and pray
+                    when (val value = arg.invoke()) {
+                        is Collection<*> -> {
+                            value as Collection<Map<String, () -> Any>>
+                            val mapped = value.map { addArg(it) }
+                            val res = ArrayList<Token>()
+                            val separator = Token(path + node.label + SEPARATOR, node.separator)
+                            for (i in mapped.indices) {
+                                res.addAll(mapped[i])
+                                if (i < mapped.size - 1) {
+                                    res.add(separator)
+                                }
+                            }
+                            res
+                        }
+                        is Map<*, *> -> {
+                            addArg(value as Map<String, () -> Any>)
+                        }
+                        else -> addArg(mapOf(THIS to { value }))
+                    }
+                } ?: emptyList() // todo handle this differently?
+            }
+            else -> node.children.flatMap { format(it, args) }
+        }
+
+        fun tokenize(node: Node, vararg args: Pair<String, () -> Any>) = format(node, args.associate { it })
+
+        fun asString(tokens: List<Token>): String {
+            val res = StringBuilder()
+            tokens.forEach { res.append(it.value) }
+            return res.toString()
+        }
 
         val date = Date(System.currentTimeMillis())
-        println(i18n("""
-            Purchases on {date, date, ::dMMM}:<@transaction(
+        /*
+        styles applied to: {
+          __base__: "info"
+          date: "var"
+          transaction: {
+            __base__: "var"
+            __separator__: "extra"
+            amount: "key"
+            time: "key"
+            entry: {
+              __base__: "info"
+              name: "var"
+              amount: "var"
+            }
+          }
+        }
+         */
+        println(asString(tokenize(parse("""
+            Purchases on <@date(){_, date, ::dMMM}@>:<@transaction(
+            
+              ---
             )
-              {amount, plural, one {# purchase} other {# purchases}} at {time, time, ::jmm}<@entry()
-                - "{name}" x{amount, number, integer}@>@>
-        """.trimIndent(),
+              <@amount(){_, plural, one {# purchase} other {# purchases}}@> at <@time(){_, time, ::jmm}@>:<@entry()
+                - <@name()"{_}"@> x<@amount(){_, number, integer}@>@>@>
+        """.trimIndent()),
             "date" to { date },
             "transaction" to { listOf(mapOf(
                 "amount" to { 5 },
@@ -362,18 +350,21 @@ class StringI18NTest {
                     "name" to { "Single Item" },
                     "amount" to { 1 }
                 )) }
-            )) }))
+            )) })))
 
-        println(i18n("""
-            Authors: <@author(, ){name} at {email}@>
-        """.trimIndent(),
+        val tokens = tokenize(parse("""
+            Authors: <@author(, )<@name(){_}@> at <@email(){_}@>@>
+        """.trimIndent()),
             "author" to { listOf(mapOf(
                 "name" to { "AuthorOne" },
                 "email" to { "one@email.com" }
             ), mapOf(
                 "name" to { "AuthorTwo" },
                 "email" to { "two@email.com" }
-            )) }))
+            )) })
+
+        println(tokens.joinToString(",\n  ", "[\n  ", "\n]"))
+        println(asString(tokens))
     }
 }
 
@@ -381,7 +372,11 @@ const val SCOPE_ENTER = "<@"
 const val SCOPE_SEPARATOR_ENTER = '('
 const val SCOPE_SEPARATOR_EXIT = ')'
 const val SCOPE_EXIT = "@>"
+
 const val LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+const val THIS = "_"
+const val BASE = "__base__"
+const val SEPARATOR = "__separator__"
 
 private data class RowCol(val row: Int, val col: Int)
 
