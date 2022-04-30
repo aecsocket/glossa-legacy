@@ -233,12 +233,6 @@ class StringI18NTest {
             End of purchases
         """.trimIndent()*/
 
-        val format = """
-            Purchases on {date, date, ::dMMM}:<@transaction:
-              {amount, plural, one {# purchase} other {# purchases}} at {time, time, ::jmm}<@entry:
-                - "{name}" x{amount, number, integer}@>@>
-        """.trimIndent()
-
         /*
         - Purchases on {date, date, ::dMMM}:
         - {amt, plural..} at {time, time, ::jmm}
@@ -264,52 +258,31 @@ class StringI18NTest {
                         parent.children.add(TextNode(format.substring(idx, enter)))
                         val labelEnter = enter + SCOPE_ENTER.length
 
-                        data class IndexGet(val label: String, val labelExit: Int, val separator: String)
+                        data class IndexGet(val labelExit: Int, val metaEnter: Int, val metaExit: Int)
 
                         // todo my god this is a mess
-                        val (label, labelExit, separator) = run {
+                        val (labelExit, metaEnter, metaExit) = run {
                             for (cur in labelEnter until format.length) {
                                 val ch = format[cur]
                                 when {
-                                    ch == SCOPE_SEPARATOR_ENTER || ch == SCOPE_LABEL_EXIT -> {
+                                    ch == SCOPE_SEPARATOR_ENTER -> {
                                         if (cur == idx)
                                             throw ParsingException(format, cur, "No label on scope enter")
-                                        when (ch) {
-                                            SCOPE_LABEL_EXIT -> return@run IndexGet(format.substring(labelEnter, cur), cur, "")
-                                            SCOPE_SEPARATOR_ENTER -> {
-                                                var brackets = 1
-                                                val separator = StringBuilder()
-                                                for (cur2 in cur + 1 until format.length) {
-                                                    when (val ch2 = format[cur2]) {
-                                                        SCOPE_SEPARATOR_ENTER -> {
-                                                            brackets++
-                                                            separator.append(ch2)
-                                                        }
-                                                        SCOPE_SEPARATOR_EXIT -> {
-                                                            brackets--
-                                                            if (brackets <= 0) {
-                                                                return@run IndexGet(format.substring(labelEnter, cur), cur2 + 1, separator.toString())
-                                                            } else {
-                                                                separator.append(ch2)
-                                                            }
-                                                        }
-                                                        else -> separator.append(ch2)
-                                                    }
-                                                }
-                                                throw ParsingException(format, cur,
-                                                    "Unbalanced brackets on separator definition")
-                                            }
-                                            else -> throw IllegalStateException()
-                                        }
+                                        return@run IndexGet(cur,
+                                            cur + 1,
+                                            format.lastEnterExit(cur + 1, SCOPE_SEPARATOR_ENTER, SCOPE_SEPARATOR_EXIT)
+                                                ?: throw ParsingException(format, cur, "Unbalanced brackets in scope label definition"))
                                     }
                                     !LABEL_CHARS.contains(ch) -> throw ParsingException(format, cur,
                                         "Illegal character in label name: found '$ch', allowed [$LABEL_CHARS]")
                                 }
                             }
-                            throw ParsingException(format, labelEnter, "No separator to mark end of label: '$SCOPE_LABEL_EXIT'")
+                            throw ParsingException(format, labelEnter, "Unterminated label definition")
                         }
+                        val label = format.substring(labelEnter, labelExit)
+                        val separator = format.substring(metaEnter, metaExit)
                         val node = ScopedNode(label, separator).also { parent.children.add(it) }
-                        idx = buildWalk(labelExit + 1, node, depth + 1) + SCOPE_EXIT.length
+                        idx = buildWalk(metaExit + 1, node, depth + 1) + SCOPE_EXIT.length
                     } else if (exit != -1 && (enter == -1 || exit < enter)) {
                         if (depth == 0)
                             throw ParsingException(format, exit, "Too many exits")
@@ -365,7 +338,12 @@ class StringI18NTest {
         fun i18n(format: String, vararg args: Pair<String, () -> Any>) = i18n(format, args.associate { it })
 
         val date = Date(System.currentTimeMillis())
-        println(i18n(format,
+        println(i18n("""
+            Purchases on {date, date, ::dMMM}:<@transaction(
+            )
+              {amount, plural, one {# purchase} other {# purchases}} at {time, time, ::jmm}<@entry()
+                - "{name}" x{amount, number, integer}@>@>
+        """.trimIndent(),
             "date" to { date },
             "transaction" to { listOf(mapOf(
                 "amount" to { 5 },
@@ -387,7 +365,7 @@ class StringI18NTest {
             )) }))
 
         println(i18n("""
-            Authors: <@author(, ):{name} at {email}@>
+            Authors: <@author(, ){name} at {email}@>
         """.trimIndent(),
             "author" to { listOf(mapOf(
                 "name" to { "AuthorOne" },
@@ -399,14 +377,28 @@ class StringI18NTest {
     }
 }
 
-val SCOPE_ENTER = "<@"
-val SCOPE_SEPARATOR_ENTER = '('
-val SCOPE_SEPARATOR_EXIT = ')'
-val SCOPE_LABEL_EXIT = ':'
-val SCOPE_EXIT = "@>"
-val LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+const val SCOPE_ENTER = "<@"
+const val SCOPE_SEPARATOR_ENTER = '('
+const val SCOPE_SEPARATOR_EXIT = ')'
+const val SCOPE_EXIT = "@>"
+const val LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
 
 private data class RowCol(val row: Int, val col: Int)
+
+private fun CharSequence.lastEnterExit(idx: Int, enter: Char, exit: Char): Int? {
+    var depth = 1
+    for (cur in idx until length) {
+        when (get(cur)) {
+            enter -> depth++
+            exit -> {
+                depth--
+                if (depth <= 0)
+                    return cur
+            }
+        }
+    }
+    return null
+}
 
 private fun CharSequence.rowColOf(idx: Int): RowCol {
     var row = 0
