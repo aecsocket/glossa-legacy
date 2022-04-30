@@ -1,7 +1,9 @@
 package com.github.aecsocket.glossa.core
 
+import com.ibm.icu.text.MessageFormat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.util.Date
 import java.util.Locale
 import kotlin.test.assertEquals
 
@@ -165,21 +167,25 @@ class StringI18NTest {
     }
 
 
-    sealed interface Node {
-        val children: MutableList<Node>
-    }
+    sealed interface Node
 
     data class TextNode(val value: String) : Node {
-        override val children = mutableListOf<Node>()
-
         override fun toString() = "\"$value\""
     }
 
-    data class RootNode(override val children: MutableList<Node> = mutableListOf()) : Node {
+    sealed interface ParentNode : Node {
+        val children: MutableList<Node>
+    }
+
+    data class RootNode(override val children: MutableList<Node> = mutableListOf()) : ParentNode {
         override fun toString() = children.toString()
     }
 
-    data class ScopedNode(val label: String, override val children: MutableList<Node> = mutableListOf()) : Node {
+    data class ScopedNode(
+        val label: String,
+        val separator: String,
+        override val children: MutableList<Node> = mutableListOf()
+    ) : ParentNode {
         override fun toString() = "@$label${children}"
     }
 
@@ -228,10 +234,16 @@ class StringI18NTest {
         """.trimIndent()*/
 
         val format = """
-            Purchases on {date, date, ::dMMM}:<@transaction
-              {amount, plural, one {# purchase} other {# purchases}} at {time, time, ::jmm}<@entry
-                - '{name}' x{amount, number, integer}@>@>
+            Purchases on {date, date, ::dMMM}:<@transaction:
+              {amount, plural, one {# purchase} other {# purchases}} at {time, time, ::jmm}<@entry:
+                - "{name}" x{amount, number, integer}@>@>
         """.trimIndent()
+
+        /*
+        - Purchases on {date, date, ::dMMM}:
+        - {amt, plural..} at {time, time, ::jmm}
+        -   - '{name}' x{amount}
+         */
 
         class ParsingException(row: Int, col: Int, message: String) : RuntimeException("${row+1}:${col+1}: $message") {
             constructor(string: String, idx: Int, message: String) :
@@ -239,14 +251,11 @@ class StringI18NTest {
                 this(string.rowColOf(idx).row, string.rowColOf(idx).col, message)
         }
 
-        fun foo(a: Int, b: Int) {}
 
-        fun i18n(format: String, args: Map<String, () -> Any>): List<String> {
-            val SCOPE_ENTER = "<@"
-            val SCOPE_EXIT = "@>"
 
+        fun i18n(format: String, args: Map<String, () -> Any>): String {
             // step 1. build node tree
-            fun walk(sIdx: Int, parent: Node, depth: Int): Int {
+            fun buildWalk(sIdx: Int, parent: ParentNode, depth: Int): Int {
                 var idx = sIdx
                 while (true) {
                     val enter = format.indexOf(SCOPE_ENTER, idx)
@@ -254,11 +263,53 @@ class StringI18NTest {
                     if (enter != -1 && (exit == -1 || enter < exit)) {
                         parent.children.add(TextNode(format.substring(idx, enter)))
                         val labelEnter = enter + SCOPE_ENTER.length
-                        format.nextNonLabel(labelEnter)?.let { labelExit ->
-                            val label = format.substring(labelEnter, labelExit)
-                            val node = ScopedNode(label).also { parent.children.add(it) }
-                            idx = walk(labelExit + 1, node, depth + 1) + SCOPE_EXIT.length
-                        } ?: throw ParsingException(format, enter, "No label on scope enter")
+
+                        data class IndexGet(val label: String, val labelExit: Int, val separator: String)
+
+                        // todo my god this is a mess
+                        val (label, labelExit, separator) = run {
+                            for (cur in labelEnter until format.length) {
+                                val ch = format[cur]
+                                when {
+                                    ch == SCOPE_SEPARATOR_ENTER || ch == SCOPE_LABEL_EXIT -> {
+                                        if (cur == idx)
+                                            throw ParsingException(format, cur, "No label on scope enter")
+                                        when (ch) {
+                                            SCOPE_LABEL_EXIT -> return@run IndexGet(format.substring(labelEnter, cur), cur, "")
+                                            SCOPE_SEPARATOR_ENTER -> {
+                                                var brackets = 1
+                                                val separator = StringBuilder()
+                                                for (cur2 in cur + 1 until format.length) {
+                                                    when (val ch2 = format[cur2]) {
+                                                        SCOPE_SEPARATOR_ENTER -> {
+                                                            brackets++
+                                                            separator.append(ch2)
+                                                        }
+                                                        SCOPE_SEPARATOR_EXIT -> {
+                                                            brackets--
+                                                            if (brackets <= 0) {
+                                                                return@run IndexGet(format.substring(labelEnter, cur), cur2 + 1, separator.toString())
+                                                            } else {
+                                                                separator.append(ch2)
+                                                            }
+                                                        }
+                                                        else -> separator.append(ch2)
+                                                    }
+                                                }
+                                                throw ParsingException(format, cur,
+                                                    "Unbalanced brackets on separator definition")
+                                            }
+                                            else -> throw IllegalStateException()
+                                        }
+                                    }
+                                    !LABEL_CHARS.contains(ch) -> throw ParsingException(format, cur,
+                                        "Illegal character in label name: found '$ch', allowed [$LABEL_CHARS]")
+                                }
+                            }
+                            throw ParsingException(format, labelEnter, "No separator to mark end of label: '$SCOPE_LABEL_EXIT'")
+                        }
+                        val node = ScopedNode(label, separator).also { parent.children.add(it) }
+                        idx = buildWalk(labelExit + 1, node, depth + 1) + SCOPE_EXIT.length
                     } else if (exit != -1 && (enter == -1 || exit < enter)) {
                         if (depth == 0)
                             throw ParsingException(format, exit, "Too many exits")
@@ -274,36 +325,93 @@ class StringI18NTest {
             }
 
             val root = RootNode()
-            walk(0, root, 0)
+            buildWalk(0, root, 0)
 
-            println("nodes = $root")
+            // step 2. build format lines
+            fun buildFormat(node: Node, args: Map<String, () -> Any>): String = when (node) {
+                is TextNode -> {
+                    val builtArgs = HashMap<String, Any?>()
+                    args.forEach { (key, value) ->
+                        // todo parse each template individually cause tokenization (for component thing)
+                        if (node.value.contains("{$key")) { // ICU template start
+                            builtArgs[key] = value.invoke()
+                        }
+                    }
+                    MessageFormat(node.value, Locale.US).asString(builtArgs)
+                }
+                is ScopedNode -> {
+                    fun addArg(arg: Map<String, () -> Any>) =
+                        node.children.joinToString("") { buildFormat(it, arg) }
 
-            return emptyList()
+                    args[node.label]?.let { arg ->
+                        when (val value = arg.invoke()) {
+                            is Collection<*> -> {
+                                value as Collection<Map<String, () -> Any>>
+                                value.joinToString(node.separator) { addArg(it) }
+                            }
+                            is Map<*, *> -> {
+                                addArg(value as Map<String, () -> Any>)
+                            }
+                            else -> throw IllegalStateException("Using arg '${node.label}' as scope (must be list of maps, or map)")
+                        }
+                    } ?: ""
+                }
+                is ParentNode -> node.children.joinToString("") { buildFormat(it, args) }
+            }
+
+            return buildFormat(root, args)
         }
 
         fun i18n(format: String, vararg args: Pair<String, () -> Any>) = i18n(format, args.associate { it })
 
-        i18n("hello <@label <@another_label @> <@yet_another_label with content@>@> and after")
+        val date = Date(System.currentTimeMillis())
+        println(i18n(format,
+            "date" to { date },
+            "transaction" to { listOf(mapOf(
+                "amount" to { 5 },
+                "time" to { date },
+                "entry" to { listOf(mapOf(
+                    "name" to { "Item One" },
+                    "amount" to { 3 }
+                ), mapOf(
+                    "name" to { "Item Two" },
+                    "amount" to { 2 }
+                )) }
+            ), mapOf(
+                "amount" to { 1 },
+                "time" to { date },
+                "entry" to { listOf(mapOf(
+                    "name" to { "Single Item" },
+                    "amount" to { 1 }
+                )) }
+            )) }))
+
+        println(i18n("""
+            Authors: <@author(, ):{name} at {email}@>
+        """.trimIndent(),
+            "author" to { listOf(mapOf(
+                "name" to { "AuthorOne" },
+                "email" to { "one@email.com" }
+            ), mapOf(
+                "name" to { "AuthorTwo" },
+                "email" to { "two@email.com" }
+            )) }))
     }
 }
 
-private fun CharSequence.nextNonLabel(idx: Int): Int? {
-    for (cur in idx until length) {
-        if (get(cur).isWhitespace()) {
-            // if it ends the same place it starts, we return null
-            // just so we don't have to handle it up there ^^
-            return if (cur == idx) null else cur
-        }
-    }
-    return null
-}
+val SCOPE_ENTER = "<@"
+val SCOPE_SEPARATOR_ENTER = '('
+val SCOPE_SEPARATOR_EXIT = ')'
+val SCOPE_LABEL_EXIT = ':'
+val SCOPE_EXIT = "@>"
+val LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
 
 private data class RowCol(val row: Int, val col: Int)
 
 private fun CharSequence.rowColOf(idx: Int): RowCol {
     var row = 0
     var col = 0
-    for (i in indices) {
+    for (i in 0 until idx) {
         if (get(i) == '\n') {
             row++
             col = 0
