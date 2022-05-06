@@ -166,22 +166,35 @@ class StringI18NTest {
         assertEquals(false, flag)
     }
 
-
     sealed interface Node {
         val children: List<Node>
+
+        fun treeValue(): List<String>
     }
+
+    fun Node.renderTree(): List<String> = Trees.render(children, { it.treeValue() }, { it.renderTree() })
 
     sealed interface MutableNode : Node {
         override val children: MutableList<Node>
+
+        fun addText(value: String) {
+            if (value.isNotEmpty()) {
+                children.add(TextNode(value))
+            }
+        }
     }
 
     data class TextNode(val value: String) : Node {
         override val children = emptyList<Node>()
 
+        override fun treeValue() = value.split('\n').map { "[$it]" }
+
         override fun toString() = "\"$value\""
     }
 
-    data class RootNode(override val children: MutableList<Node> = mutableListOf()) : MutableNode {
+    data class HolderNode(override val children: MutableList<Node> = mutableListOf()) : MutableNode {
+        override fun treeValue() = listOf("<holder>")
+
         override fun toString() = children.toString()
     }
 
@@ -190,25 +203,45 @@ class StringI18NTest {
         val separator: String,
         override val children: MutableList<Node> = mutableListOf(),
     ) : MutableNode {
+        override fun treeValue() = listOf("@$label")
+
         override fun toString() = "@$label$children"
+    }
+
+    data class Args(val args: Map<String, () -> Any>) {
+        constructor(vararg args: Pair<String, () -> Any>) :
+            this(args.associate { it })
+
+        operator fun get(index: String) = args[index]
+
+        fun forEach(action: (String, () -> Any) -> Unit) = args.forEach(action)
+    }
+
+    data class MultiArgs(val args: Collection<Args>) {
+        constructor(vararg args: Args) :
+            this(args.toList())
+    }
+
+    class ParsingException(row: Int, col: Int, message: String) : RuntimeException("${row+1}:${col+1}: $message") {
+        companion object {
+            @JvmStatic
+            fun from(text: String, idx: Int, message: String): ParsingException {
+                val rowCol = text.rowColOf(idx)
+                return ParsingException(rowCol.row, rowCol.col, message)
+            }
+        }
     }
 
     @Test
     fun todoRemove() {
-        class ParsingException(row: Int, col: Int, message: String) : RuntimeException("${row+1}:${col+1}: $message") {
-            constructor(string: String, idx: Int, message: String) :
-                    // todo i dont like this
-                this(string.rowColOf(idx).row, string.rowColOf(idx).col, message)
-        }
-
-        fun parse(format: String): RootNode {
+        fun parse(format: String): HolderNode {
             fun buildWalk(parent: MutableNode, sIdx: Int = 0, path: List<String> = emptyList()): Int {
                 var idx = sIdx
                 while (true) {
                     val enter = format.indexOf(SCOPE_ENTER, idx)
                     val exit = format.indexOf(SCOPE_EXIT, idx)
                     if (enter != -1 && (exit == -1 || enter < exit)) {
-                        parent.children.add(TextNode(format.substring(idx, enter)))
+                        parent.addText(format.substring(idx, enter))
                         val labelEnter = enter + SCOPE_ENTER.length
 
                         data class IndexGet(val labelExit: Int, val metaEnter: Int, val metaExit: Int)
@@ -219,18 +252,18 @@ class StringI18NTest {
                                 when {
                                     ch == SCOPE_SEPARATOR_ENTER -> {
                                         if (cur == idx)
-                                            throw ParsingException(format, cur, "No label on scope enter")
+                                            throw ParsingException.from(format, cur, "No label on scope enter")
                                         return@run IndexGet(cur,
                                             cur + 1,
                                             format.lastEnterExit(cur + 1, SCOPE_SEPARATOR_ENTER, SCOPE_SEPARATOR_EXIT)
-                                                ?: throw ParsingException(format, cur,
+                                                ?: throw ParsingException.from(format, cur,
                                                     "Unbalanced brackets in scope label definition"))
                                     }
-                                    !LABEL_CHARS.contains(ch) -> throw ParsingException(format, cur,
+                                    !LABEL_CHARS.contains(ch) -> throw ParsingException.from(format, cur,
                                         "Illegal character in label name: found '$ch', allowed [$LABEL_CHARS]")
                                 }
                             }
-                            throw ParsingException(format, labelEnter, "Unterminated label definition")
+                            throw ParsingException.from(format, labelEnter, "Unterminated label definition")
                         }
                         val label = format.substring(labelEnter, labelExit)
                         val separator = format.substring(metaEnter, metaExit)
@@ -238,133 +271,137 @@ class StringI18NTest {
                         idx = buildWalk(node, metaExit + 1, path + label) + SCOPE_EXIT.length
                     } else if (exit != -1 && (enter == -1 || exit < enter)) {
                         if (path.isEmpty())
-                            throw ParsingException(format, exit, "Too many exits")
-                        parent.children.add(TextNode(format.substring(idx, exit)))
+                            throw ParsingException.from(format, exit, "Too many exits")
+                        parent.addText(format.substring(idx, exit))
                         return exit
                     } else if (path.isNotEmpty()) {
-                        throw ParsingException(format, format.length, "Too many entrances")
+                        throw ParsingException.from(format, format.length, "Too many entrances")
                     } else {
-                        parent.children.add(TextNode(format.substring(idx)))
+                        parent.addText(format.substring(idx))
                         return format.length
                     }
                 }
             }
 
-            return RootNode().apply {
+            return HolderNode().apply {
                 buildWalk(this)
             }
         }
 
         data class Token(val key: List<String>, val value: String)
 
-        fun format(node: Node, args: Map<String, () -> Any>, path: List<String> = emptyList()): List<Token> = when (node) {
+        fun tokenize(node: Node, args: Args, path: List<String> = emptyList()): Lines<Token> = when (node) {
             is TextNode -> {
                 val builtArgs = HashMap<String, Any?>()
-                args.forEach { (key, value) ->
-                    // todo parse each template individually cause tokenization (for component thing)
+                args.forEach { key, value ->
                     if (node.value.contains("{$key")) { // ICU template start
                         builtArgs[key] = value.invoke()
                     }
                 }
-                listOf(Token(path + BASE, MessageFormat(node.value, Locale.US).asString(builtArgs)))
+                val newPath = path + BASE
+                Lines.fromText(MessageFormat(node.value, Locale.US /* todo */).asString(builtArgs)) { Token(newPath, it) }
             }
             is ScopedNode -> {
-                fun addArg(arg: Map<String, () -> Any>) =
-                    node.children.flatMap { format(it, arg, path + node.label) }
+                fun linesOfArgs(args: Args): Lines<Token> {
+                    var lines = Lines<Token>()
+                    node.children.forEach { child ->
+                        lines += tokenize(child, args, path + node.label)
+                    }
+                    return lines
+                }
 
-                args[node.label]?.let { arg ->
-                    @Suppress("UNCHECKED_CAST") // cast and pray
-                    when (val value = arg.invoke()) {
-                        is Collection<*> -> {
-                            value as Collection<Map<String, () -> Any>>
-                            val mapped = value.map { addArg(it) }
-                            val res = ArrayList<Token>()
-                            val separator = Token(path + node.label + SEPARATOR, node.separator)
-                            for (i in mapped.indices) {
-                                res.addAll(mapped[i])
-                                if (i < mapped.size - 1) {
-                                    res.add(separator)
+                args[node.label]?.let { valueFactory ->
+                    when (val value = valueFactory()) {
+                        is MultiArgs -> {
+                            var totalLines = Lines<Token>()
+                            val childLines = value.args.map { linesOfArgs(it) }
+                            val separator = Lines.fromText(node.separator) { Token(path + node.label + SEPARATOR, it) }
+                            childLines.forEachIndexed { idx, lines ->
+                                totalLines += lines
+                                if (idx < childLines.size - 1) {
+                                    totalLines += separator
                                 }
                             }
-                            res
+                            return@let totalLines
                         }
-                        is Map<*, *> -> {
-                            addArg(value as Map<String, () -> Any>)
-                        }
-                        else -> addArg(mapOf(THIS to { value }))
+                        is Args -> linesOfArgs(value)
+                        else -> linesOfArgs(Args(mapOf(THIS to { value })))
                     }
-                } ?: emptyList() // todo handle this differently?
+                } ?: Lines()
             }
-            else -> node.children.flatMap { format(it, args) }
+            else -> {
+                var lines = Lines<Token>()
+                node.children.forEach {
+                    lines += tokenize(it, args, path)
+                }
+                lines
+            }
         }
-
-        fun tokenize(node: Node, vararg args: Pair<String, () -> Any>) = format(node, args.associate { it })
 
         fun asString(tokens: List<Token>): String {
             val res = StringBuilder()
-            tokens.forEach { res.append(it.value) }
+            tokens.forEach { res.append("[${it.value}]") }
             return res.toString()
         }
 
         val date = Date(System.currentTimeMillis())
-        /*
-        styles applied to: {
-          __base__: "info"
-          date: "var"
-          transaction: {
-            __base__: "var"
-            __separator__: "extra"
-            amount: "key"
-            time: "key"
-            entry: {
-              __base__: "info"
-              name: "var"
-              amount: "var"
-            }
-          }
-        }
-         */
-        println(asString(tokenize(parse("""
+        val node = parse("""
             Purchases on <@date(){_, date, ::dMMM}@>:<@transaction(
             
               ---
             )
               <@amount(){_, plural, one {# purchase} other {# purchases}}@> at <@time(){_, time, ::jmm}@>:<@entry()
                 - <@name()"{_}"@> x<@amount(){_, number, integer}@>@>@>
-        """.trimIndent()),
+        """.trimIndent())
+
+        node.renderTree().forEach { println(it) }
+
+        val lines = tokenize(node, Args(
             "date" to { date },
-            "transaction" to { listOf(mapOf(
+            "transaction" to { MultiArgs(Args(
                 "amount" to { 5 },
                 "time" to { date },
-                "entry" to { listOf(mapOf(
+                "entry" to { MultiArgs(Args(
                     "name" to { "Item One" },
                     "amount" to { 3 }
-                ), mapOf(
+                ), Args(
                     "name" to { "Item Two" },
                     "amount" to { 2 }
                 )) }
-            ), mapOf(
+            ), Args(
                 "amount" to { 1 },
                 "time" to { date },
-                "entry" to { listOf(mapOf(
+                "entry" to { MultiArgs(Args(
                     "name" to { "Single Item" },
                     "amount" to { 1 }
                 )) }
-            )) })))
+            )) }))
 
-        val tokens = tokenize(parse("""
+        lines.lines().forEach { line ->
+            println(asString(line))
+        }
+
+        val node2 = parse("""
             Authors: <@author(, )<@name(){_}@> at <@email(){_}@>@>
-        """.trimIndent()),
-            "author" to { listOf(mapOf(
+            ...
+        """.trimIndent())
+
+        println("\n")
+
+        node2.renderTree().forEach { println(it) }
+
+        val tokens = tokenize(node2, Args(
+            "author" to { MultiArgs(Args(
                 "name" to { "AuthorOne" },
                 "email" to { "one@email.com" }
-            ), mapOf(
+            ), Args(
                 "name" to { "AuthorTwo" },
                 "email" to { "two@email.com" }
-            )) })
+            )) }))
 
-        println(tokens.joinToString(",\n  ", "[\n  ", "\n]"))
-        println(asString(tokens))
+        tokens.lines().forEach { line ->
+            println(asString(line))
+        }
     }
 }
 
@@ -407,4 +444,41 @@ private fun CharSequence.rowColOf(idx: Int): RowCol {
         }
     }
     return RowCol(row, col)
+}
+
+data class Lines<T>(
+    val values: List<T> = emptyList(),
+    val indices: List<Int> = emptyList()
+) {
+    fun add(values: List<T>, indices: List<Int>): Lines<T> {
+        val size = this.values.size
+        return Lines(
+            this.values + values,
+            this.indices + indices.map { it + size }
+        )
+    }
+
+    operator fun plus(o: Lines<T>) = add(o.values, o.indices)
+
+    fun lines(): List<List<T>> {
+        val res = ArrayList<List<T>>()
+        var lastIndex = 0
+        indices.forEach { index ->
+            res.add(values.subList(lastIndex, index))
+            lastIndex = index
+        }
+        if (lastIndex < values.size) {
+            res.add(values.subList(lastIndex, values.size))
+        }
+        return res
+    }
+
+    companion object {
+        @JvmStatic
+        fun <T> fromText(text: String, mapper: (String) -> T): Lines<T> {
+            val lines = text.split('\n')
+            val lineIndices = lines.indices.toMutableList()
+            return Lines(lines.map(mapper), lineIndices.subList(1, lineIndices.size))
+        }
+    }
 }
