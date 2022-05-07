@@ -1,5 +1,6 @@
 package com.github.aecsocket.glossa.api
 
+import org.spongepowered.configurate.ConfigurationOptions
 import java.util.*
 import kotlin.collections.HashMap
 

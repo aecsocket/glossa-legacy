@@ -155,7 +155,7 @@ const val LABEL_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
 /** Token for the current scope element in a format. */
 const val THIS = "_"
 /** Key for elements which are separators of other tokens. */
-const val SEPARATOR = "__separator"
+const val SEPARATOR = "__separator__"
 
 /**
  * Helper class for templating string messages using a custom scope

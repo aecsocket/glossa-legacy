@@ -1,9 +1,16 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.api.Args
+import com.github.aecsocket.glossa.api.*
+import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
+import org.spongepowered.configurate.ConfigurateException
+import org.spongepowered.configurate.ConfigurationOptions
+import org.spongepowered.configurate.kotlin.extensions.get
+import org.spongepowered.configurate.loader.ConfigurationLoader
+import org.spongepowered.configurate.objectmapping.ConfigSerializable
+import org.spongepowered.configurate.objectmapping.meta.Setting
 import java.util.Locale
 
 /**
@@ -18,7 +25,11 @@ class StylingI18N(
      * @property default the key of the default style applied.
      * @property args the key of styles applied to arguments.
      */
-    data class Format(val default: String? = null, val args: Map<List<String>, String> = emptyMap()) {
+    @ConfigSerializable
+    data class Format(
+        @Setting(value = "__default__") val default: String? = null,
+        @Setting(nodeFromParent = true) val args: Map<List<String>, String> = emptyMap()
+    ) {
         constructor(default: String? = null, vararg args: Pair<List<String>, String>) :
             this(default, args.associate { it })
 
@@ -27,19 +38,6 @@ class StylingI18N(
             @JvmStatic val IDENTITY = Format()
         }
     }
-
-    /*
-    style: {
-      info: { color: "gray" }
-      var: { color: "white" }
-    }
-    format: {
-      "message.simple": {
-        __default: "info"
-        "scope.value": "var"
-      }
-    }
-     */
 
     val styles = HashMap<String, Style>()
     val formats = HashMap<String, Format>()
@@ -58,3 +56,22 @@ class StylingI18N(
 }
 
 private fun Component.defaultStyle(style: Style?) = style?.let { applyFallbackStyle(it) } ?: this
+
+private val CONFIG_OPTIONS = ConfigurationOptions.defaults()
+    .serializers {
+        it.registerAll(ConfigurateComponentSerializer.configurate().serializers())
+    }
+private const val STYLES = "styles"
+private const val FORMATS = "formats"
+
+@Throws(ConfigurateException::class)
+fun StylingI18N.load(loader: ConfigurationLoader<*>) {
+    val node = loader.load(CONFIG_OPTIONS)
+    for ((key, child) in node.node(STYLES).childrenMap()) {
+         child.get(Style::class)?.let { styles[key.toString()] = it }
+    }
+    for ((key, child) in node.node(FORMATS).childrenMap()) {
+        child.get(StylingI18N.Format::class)?.let { formats[key.toString()] = it }
+    }
+    register(loader.load(CONFIG_OPTIONS).req(Translation::class))
+}

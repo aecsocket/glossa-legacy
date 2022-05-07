@@ -1,6 +1,11 @@
 package com.github.aecsocket.glossa.api
 
 import com.ibm.icu.text.MessageFormat
+import io.leangen.geantyref.TypeToken
+import org.spongepowered.configurate.ConfigurationNode
+import org.spongepowered.configurate.kotlin.extensions.get
+import org.spongepowered.configurate.serialize.TypeSerializer
+import java.lang.reflect.Type
 import java.text.FieldPosition
 import java.util.Locale
 
@@ -75,52 +80,6 @@ interface I18N<T, A> {
      */
     fun safe(key: String, args: A) =
         safe(locale, key, args)
-}
-
-/**
- * A string key-value map, additionally storing what locale this translation
- * is effective for.
- *
- * @property locale the locale this translation is for.
- * @param m the underlying map.
- */
-class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<String, String>(m) {
-    constructor(locale: Locale) : this(locale, emptyMap())
-
-    /**
-     * Deeply copies this translation.
-     * @return the copy.
-     */
-    fun copy() = Translation(locale, this)
-}
-
-/**
- * A service to localize a given key based on a locale,
- * generating a [T].
- *
- * Arguments are provided as [A] instances.
- *
- * Translations can be registered and unregistered.
- */
-interface MutableI18N<T, A> : I18N<T, A> {
-    /**
-     * Registers a translation.
-     * @param tl the translation.
-     */
-    fun register(tl: Translation)
-
-    /**
-     * Registers a translation.
-     * @param locale the translation locale.
-     * @param tl the translation pairs.
-     */
-    fun register(locale: Locale, vararg tl: Pair<String, String>) =
-        register(Translation(locale, tl.associate { it }))
-
-    /**
-     * Unregisters all translations.
-     */
-    fun clear()
 }
 
 /**

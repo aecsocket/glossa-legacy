@@ -4,6 +4,7 @@ dokka = "1.6.21"
 junit = "5.7.2"
 
 icu4j = "68.1"
+configurate = "4.1.2"
 
 adventure = "4.10.0"
 
@@ -14,13 +15,17 @@ jupiterApi = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.
 jupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 
 icu4j = { group = "com.ibm.icu", name = "icu4j", version.ref = "icu4j" }
+configurateHocon = { group = "org.spongepowered", name = "configurate-hocon", version.ref = "configurate" }
+configurateExtraKotlin = { group = "org.spongepowered", name = "configurate-extra-kotlin", version.ref = "configurate" }
 
 adventureApi = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
 adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-serializer-gson", version.ref = "adventure" }
 adventureTextSerializerPlain = { group = "net.kyori", name = "adventure-text-serializer-plain", version.ref = "adventure" }
-adventureTextMiniMessage = { group = "net.kyori", name = "adventure-text-minimessage", version.ref = "adventure" }
+adventureSerializerConfigurate = { group = "net.kyori", name = "adventure-serializer-configurate4", version.ref = "adventure" }
 
 [bundles]
 
-adventure = [ "adventureApi", "adventureTextMiniMessage" ]
+configurate = [ "configurateHocon", "configurateExtraKotlin" ]
 junit = [ "jupiterApi", "jupiterEngine" ]
+
+adventure = [ "adventureApi", "adventureSerializerConfigurate" ]

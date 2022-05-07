@@ -9,9 +9,9 @@ import net.kyori.adventure.text.format.TextDecoration
 import java.util.Stack
 import java.util.StringJoiner
 
-const val START = "\u001b["
-const val END = "m"
-const val RESET = "0"
+private const val START = "\u001b["
+private const val END = "m"
+private const val RESET = "0"
 
 /**
  * The color level that a terminal supports.
