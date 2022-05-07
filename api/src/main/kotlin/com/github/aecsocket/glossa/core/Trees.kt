@@ -1,6 +1,16 @@
 package com.github.aecsocket.glossa.core
 
+/**
+ * Helper class for tree structures.
+ */
 object Trees {
+    /**
+     * Renders a tree structure using box drawing characters.
+     * @param items the items to render.
+     * @param getValue function to get value lines from an item.
+     * @param getTree function to get tree lines from an item (call [render] on the child)
+     * @return the lines of the rendered form.
+     */
     fun <T> render(items: List<T>, getValue: (T) -> List<String>, getTree: (T) -> List<String>): List<String> {
         val res = ArrayList<String>()
         items.forEachIndexed { idx, child ->

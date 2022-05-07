@@ -1,5 +1,6 @@
 package com.github.aecsocket.glossa.core
 
+import com.github.aecsocket.glossa.core.Templating.renderTree
 import org.junit.jupiter.api.Test
 import java.util.Date
 import java.util.Locale
@@ -66,6 +67,13 @@ class StringI18NTest {
     @Test
     fun testSingleLine() {
         val i18n = i18n()
+
+        Templating.parse("""
+            Actions on {date, date, short}:<@action()
+              Purchases: {purchases, number}<@entry()
+                - {item} x{amount}@>@>
+        """.trimIndent()).renderTree().forEach { println(it) }
+
         assertEquals(listOf(
             "Single line"
         ), i18n[SINGLE_LINE])
