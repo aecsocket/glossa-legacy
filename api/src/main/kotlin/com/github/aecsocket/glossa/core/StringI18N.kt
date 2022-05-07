@@ -4,17 +4,10 @@ import java.util.*
 
 class StringI18N(
     locale: Locale = Locale.ROOT
-) : AbstractI18N<List<String>, List<Any>>(locale), MultilineI18N<String, Any> {
-    override fun doGet(
-        locale: Locale,
-        key: String,
-        args: Map<String, (I18NContext<List<String>, List<Any>>) -> List<Any>>
-    ) = translations[locale]?.get(key)?.let { tl ->
-        parse(locale, tl, key, args, { it }, { idx, tokens, post ->
-            tokens.joinToString("") { token -> token.pre + token.value[idx] } + post
-        }, { it })
-    }
+) : TemplatingI18N<String>(locale) {
+    override fun toE(line: List<Templating.FormatToken>) =
+        line.joinToString("") { it.value }
 
-    override fun safe(locale: Locale, key: String, args: Map<String, (I18NContext<List<String>, List<Any>>) -> List<Any>>) =
+    override fun safe(locale: Locale, key: String, args: Args) =
         get(locale, key, args) ?: listOf(key)
 }
