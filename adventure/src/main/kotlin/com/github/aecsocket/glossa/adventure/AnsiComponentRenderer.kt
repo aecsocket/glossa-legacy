@@ -13,24 +13,39 @@ const val START = "\u001b["
 const val END = "m"
 const val RESET = "0"
 
-// similar to https://github.com/KyoriPowered/ansi/blob/trunk/src/main/java/net/kyori/ansi/ColorLevel.java
-
+/**
+ * The color level that a terminal supports.
+ */
 interface ColorLevel {
+    /**
+     * Converts the provided RGB color into an escape string.
+     * @param rgb the RGB color.
+     * @return the escape sequence.
+     */
     fun escape(rgb: Int): String
 
     companion object {
+        /**
+         * TrueColor terminal level.
+         */
         @JvmStatic
         val TRUE_COLOR = object : ColorLevel {
             override fun escape(rgb: Int) =
                 "38;2;${rgb shr 16 and 0xff};${rgb shr 0 and 0xff};${rgb and 0xff}"
         }
 
+        /**
+         * Terminals with 256 colors.
+         */
         @JvmStatic
         val INDEXED_256 = object : ColorLevel {
             // todo
             override fun escape(rgb: Int) = INDEXED_16.escape(rgb)
         }
 
+        /**
+         * Terminals with 16 colors.
+         */
         @JvmStatic
         val INDEXED_16 = object : ColorLevel {
             override fun escape(rgb: Int) = when (rgb) {
@@ -56,7 +71,17 @@ interface ColorLevel {
     }
 }
 
+/**
+ * Renders [Component]s into strings using ANSI escape sequences.
+ *
+ * Adapted from https://github.com/KyoriPowered/ansi/blob/trunk/src/main/java/net/kyori/ansi/ColorLevel.java
+ * for Kotlin.
+ */
 object AnsiComponentRenderer {
+    /**
+     * Gets the color level of the current environment.
+     * @return the color level.
+     */
     fun colorLevel(): ColorLevel {
         System.getenv("COLORTERM")?.let {
             if (it == "truecolor" || it == "24bit") return ColorLevel.TRUE_COLOR
@@ -67,6 +92,11 @@ object AnsiComponentRenderer {
         return ColorLevel.INDEXED_16
     }
 
+    /**
+     * Renders the passed component into a string with ANSI escape codes.
+     * @param input the component.
+     * @return the string.
+     */
     fun render(input: Component): String {
         val result = StringBuilder()
         val colorLevel = colorLevel()
@@ -112,8 +142,15 @@ object AnsiComponentRenderer {
         return "$result$START$RESET$END"
     }
 
+    /**
+     * Renders the passed component-like into a string with ANSI escape codes.
+     * @param input the component.
+     * @return the string.
+     */
     fun render(like: ComponentLike) = render(like.asComponent())
 }
 
+/** @see [AnsiComponentRenderer.render] */
 fun Component.ansi() = AnsiComponentRenderer.render(this)
+/** @see [AnsiComponentRenderer.render] */
 fun ComponentLike.ansi() = AnsiComponentRenderer.render(this)

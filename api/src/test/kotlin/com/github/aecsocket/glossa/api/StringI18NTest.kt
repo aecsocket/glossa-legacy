@@ -1,6 +1,6 @@
-package com.github.aecsocket.glossa.core
+package com.github.aecsocket.glossa.api
 
-import com.github.aecsocket.glossa.core.Templating.renderTree
+import com.github.aecsocket.glossa.api.Templating.renderTree
 import org.junit.jupiter.api.Test
 import java.util.Date
 import java.util.Locale

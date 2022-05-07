@@ -1,4 +1,4 @@
-package com.github.aecsocket.glossa.core
+package com.github.aecsocket.glossa.api
 
 import com.ibm.icu.text.MessageFormat
 import java.text.FieldPosition

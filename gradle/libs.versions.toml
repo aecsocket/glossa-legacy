@@ -1,5 +1,6 @@
 [versions]
 
+dokka = "1.6.21"
 junit = "5.7.2"
 
 icu4j = "68.1"
@@ -8,6 +9,7 @@ adventure = "4.10.0"
 
 [libraries]
 
+dokka = { group = "org.jetbrains.dokka", name = "kotlin-as-java-plugin", version.ref = "dokka" }
 jupiterApi = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
 jupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 

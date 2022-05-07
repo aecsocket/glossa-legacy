@@ -1,19 +1,29 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.core.Args
+import com.github.aecsocket.glossa.api.Args
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
 import java.util.Locale
 
+/**
+ * I18N service which uses [Format]s and [Style]s to localize
+ * into Adventure [Component]s.
+ */
 class StylingI18N(
     locale: Locale = Locale.ROOT
 ) : AdventureI18N(locale) {
+    /**
+     * Defines style keys for parts of a message.
+     * @property default the key of the default style applied.
+     * @property args the key of styles applied to arguments.
+     */
     data class Format(val default: String? = null, val args: Map<List<String>, String> = emptyMap()) {
         constructor(default: String? = null, vararg args: Pair<List<String>, String>) :
             this(default, args.associate { it })
 
         companion object {
+            /** Format which makes no styling changes. */
             @JvmStatic val IDENTITY = Format()
         }
     }

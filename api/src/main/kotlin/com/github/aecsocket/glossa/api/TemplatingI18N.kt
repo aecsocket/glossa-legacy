@@ -1,4 +1,4 @@
-package com.github.aecsocket.glossa.core
+package com.github.aecsocket.glossa.api
 
 import java.util.*
 import kotlin.collections.HashMap

@@ -1,6 +1,6 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.core.*
+import com.github.aecsocket.glossa.api.*
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.Style.style
