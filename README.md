@@ -11,8 +11,11 @@
 
 ICU-based localization library written in Kotlin.
 
-# Documentation
+# Features
 
-## [Setup](https://aecsocket.github.io/glossa/#/setup)
+* ICU under the hood
+* Scopes
+* Designed around Kotlin
+* Adventure support
 
-## [Dokka](https://aecsocket.github.io/glossa/dokka/index.html)
+### [Quickstart and documentation](https://aecsocket.github.io/glossa)
