@@ -125,3 +125,8 @@ buildNumber.properties
 run/
 build
 .gradle
+
+# Docs
+node_modules/
+.docusaurus/
+
