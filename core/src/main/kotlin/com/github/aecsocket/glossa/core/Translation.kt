@@ -1,6 +1,5 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
-import io.leangen.geantyref.TypeToken
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.serialize.TypeSerializer
 import java.lang.reflect.Type
@@ -23,6 +22,9 @@ class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<Stri
      */
     fun copy() = Translation(locale, this)
 
+    /**
+     * Singleton Configurate serializer for this type.
+     */
     object Serializer : TypeSerializer<Translation> {
         @JvmStatic val LOCALE = "__locale__"
 

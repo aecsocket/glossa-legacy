@@ -1,4 +1,4 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
 import io.leangen.geantyref.TypeToken
 import org.spongepowered.configurate.ConfigurationNode

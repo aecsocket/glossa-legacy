@@ -1,6 +1,5 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
-import com.github.aecsocket.glossa.api.Templating.renderTree
 import org.junit.jupiter.api.Test
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import java.io.BufferedReader
@@ -15,7 +14,7 @@ const val TEMPLATED = "templated"
 const val LOCALE_TEMPLATED = "locale_templated"
 const val SCOPED = "scoped"
 const val SCOPED_THIS = "scoped_this"
-const val SEPARATORS = "separators"
+const val SEPARATED = "separated"
 const val SEPARATORS_THIS = "separators_this"
 const val NESTED_SCOPE = "nested_scope"
 
@@ -38,14 +37,14 @@ class StringI18NTest {
                   other {You have # items.}
                 }
             """.trimIndent(),
-            SCOPED to "Scoped: ><@scope(){value}@><",
-            SCOPED_THIS to "Scoped this: ><@value(){_}@><",
-            SEPARATORS to "Authors: <@author(, ){name}@>",
-            SEPARATORS_THIS to "Authors: <@author(, ){_}@>",
+            SCOPED to "Scoped: >@scope[{value}]<",
+            SCOPED_THIS to "Scoped this: >@value[{_}]<",
+            SEPARATED to "Authors: @author[{name}][, ]",
+            SEPARATORS_THIS to "Authors: @author[{_}][, ]",
             NESTED_SCOPE to """
-                Purchases:<@purchase()
-                  {total, plural, one {# purchase} other {# purchases}}:<@entry()
-                    - "{name}" x{amount}@>@>
+                Purchases: @purchase[
+                  {total, plural, one {# purchase} other {# purchases}}: @entry[
+                    - "{name}" x{amount}]]
             """.trimIndent())
         register(Locale.UK,
             SINGLE_LINE to "[UK] Single line",
@@ -70,12 +69,6 @@ class StringI18NTest {
     @Test
     fun testSingleLine() {
         val i18n = i18n()
-
-        Templating.parse("""
-            Actions on {date, date, short}:<@action()
-              Purchases: {purchases, number}<@entry()
-                - {item} x{amount}@>@>
-        """.trimIndent()).renderTree().forEach { println(it) }
 
         assertEquals(listOf(
             "Single line"
@@ -199,7 +192,7 @@ class StringI18NTest {
 
         assertEquals(listOf(
             "Authors: AuthorOne, AuthorTwo, AuthorThree"
-        ), i18n[SEPARATORS, Args(
+        ), i18n[SEPARATED, Args(
             "author" to { MultiArgs({ Args(
                 "name" to { "AuthorOne" }
             ) }, { Args(
@@ -225,11 +218,11 @@ class StringI18NTest {
         val i18n = i18n()
 
         assertEquals(listOf(
-            "Purchases:",
-            "  5 purchases:",
+            "Purchases: ",
+            "  5 purchases: ",
             "    - \"Item one\" x3",
             "    - \"Item two\" x2",
-            "  1 purchase:",
+            "  1 purchase: ",
             "    - \"Item\" x1"
         ), i18n[NESTED_SCOPE, Args(
             "purchase" to { MultiArgs({ Args(

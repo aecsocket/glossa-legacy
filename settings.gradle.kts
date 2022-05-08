@@ -22,14 +22,13 @@ dependencyResolutionManagement {
 
 rootProject.name = "glossa"
 
-subproject("${rootProject.name}-api") {
-    projectDir = file("api")
-}
-subproject("${rootProject.name}-adventure") {
-    projectDir = file("adventure")
-}
-
-inline fun subproject(name: String, block: ProjectDescriptor.() -> Unit) {
+listOf(
+    "core",
+    "adventure"
+).forEach {
+    val name = "${rootProject.name}-$it"
     include(name)
-    project(":$name").apply(block)
+    project(":$name").apply {
+        projectDir = file(it)
+    }
 }

@@ -1,11 +1,6 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
 import com.ibm.icu.text.MessageFormat
-import io.leangen.geantyref.TypeToken
-import org.spongepowered.configurate.ConfigurationNode
-import org.spongepowered.configurate.kotlin.extensions.get
-import org.spongepowered.configurate.serialize.TypeSerializer
-import java.lang.reflect.Type
 import java.text.FieldPosition
 import java.util.Locale
 

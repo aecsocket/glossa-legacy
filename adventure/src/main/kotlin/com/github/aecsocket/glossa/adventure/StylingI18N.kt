@@ -1,6 +1,6 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.api.*
+import com.github.aecsocket.glossa.core.*
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
@@ -14,43 +14,48 @@ import org.spongepowered.configurate.objectmapping.meta.Setting
 import java.util.Locale
 
 /**
- * I18N service which uses [Format]s and [Style]s to localize
+ * Defines style keys for parts of a message.
+ * @property default the key of the default style applied.
+ * @property args the key of styles applied to arguments.
+ */
+@ConfigSerializable
+data class StylingFormat(
+    @Setting(value = "__default__") val default: String? = null,
+    @Setting(nodeFromParent = true) val args: Map<List<String>, String> = emptyMap()
+) {
+    constructor(default: String? = null, vararg args: Pair<List<String>, String>) :
+            this(default, args.associate { it })
+
+    companion object {
+        /** Format which makes no styling changes. */
+        @JvmStatic val IDENTITY = StylingFormat()
+    }
+}
+
+/**
+ * I18N service which uses [StylingFormat]s and [Style]s to localize
  * into Adventure [Component]s.
  */
 class StylingI18N(
     locale: Locale = Locale.ROOT
 ) : AdventureI18N(locale) {
-    /**
-     * Defines style keys for parts of a message.
-     * @property default the key of the default style applied.
-     * @property args the key of styles applied to arguments.
-     */
-    @ConfigSerializable
-    data class Format(
-        @Setting(value = "__default__") val default: String? = null,
-        @Setting(nodeFromParent = true) val args: Map<List<String>, String> = emptyMap()
-    ) {
-        constructor(default: String? = null, vararg args: Pair<List<String>, String>) :
-            this(default, args.associate { it })
-
-        companion object {
-            /** Format which makes no styling changes. */
-            @JvmStatic val IDENTITY = Format()
-        }
-    }
-
     val styles = HashMap<String, Style>()
-    val formats = HashMap<String, Format>()
+    val formats = HashMap<String, StylingFormat>()
 
     override fun get(locale: Locale, key: String, args: Args) = format(locale, key, args)?.let { lines ->
-        val format = formats[key] ?: Format.IDENTITY
+        val format = formats[key] ?: StylingFormat.IDENTITY
         val defaultStyle = format.default?.let { styles[it] }
         lines.map { line ->
-            val res = text()
-            line.forEach { token ->
-                res.append(text(token.value).defaultStyle(styles[format.args[token.path]]))
+            fun component(token: Templating.FormatToken) =
+                text(token.value).defaultStyle(styles[format.args[token.path]])
+
+            if (line.size == 1) {
+                component(line[0])
+            } else {
+                val res = text()
+                line.forEach { res.append(component(it)) }
+                res.build().defaultStyle(defaultStyle)
             }
-            res.build().defaultStyle(defaultStyle)
         }
     }
 }
@@ -71,7 +76,7 @@ fun StylingI18N.load(loader: ConfigurationLoader<*>) {
          child.get(Style::class)?.let { styles[key.toString()] = it }
     }
     for ((key, child) in node.node(FORMATS).childrenMap()) {
-        child.get(StylingI18N.Format::class)?.let { formats[key.toString()] = it }
+        child.get(StylingFormat::class)?.let { formats[key.toString()] = it }
     }
     register(loader.load(CONFIG_OPTIONS).req(Translation::class))
 }

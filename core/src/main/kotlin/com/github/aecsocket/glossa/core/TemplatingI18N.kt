@@ -1,6 +1,5 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
-import org.spongepowered.configurate.ConfigurationOptions
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -13,8 +12,15 @@ import kotlin.collections.HashMap
 abstract class TemplatingI18N<E>(
     locale: Locale = Locale.ROOT
 ) : AbstractI18N<List<E>, Args>(locale) {
-    private val cache = HashMap<Locale, MutableMap<String, Templating.Node?>>()
+    private val cache = HashMap<Locale, MutableMap<String, TemplateNode?>>()
 
+    /**
+     * Helper method to generate format tokens for a get operation.
+     * @param locale the locale.
+     * @param key the localization key.
+     * @param args the args.
+     * @return the lines of format tokens.
+     */
     protected fun format(locale: Locale, key: String, args: Args): List<List<Templating.FormatToken>>? {
         return cache.computeIfAbsent(locale) { HashMap() }.computeIfAbsent(key) {
             translation(locale, key)?.let { Templating.parse(it) }

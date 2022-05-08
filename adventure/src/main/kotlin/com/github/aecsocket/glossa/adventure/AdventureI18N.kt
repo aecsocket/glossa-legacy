@@ -1,7 +1,7 @@
 package com.github.aecsocket.glossa.adventure
 
-import com.github.aecsocket.glossa.api.Args
-import com.github.aecsocket.glossa.api.TemplatingI18N
+import com.github.aecsocket.glossa.core.Args
+import com.github.aecsocket.glossa.core.TemplatingI18N
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import java.util.Locale

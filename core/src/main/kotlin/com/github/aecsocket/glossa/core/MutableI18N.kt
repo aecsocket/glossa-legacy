@@ -1,4 +1,4 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
 import org.spongepowered.configurate.ConfigurateException
 import org.spongepowered.configurate.ConfigurationOptions

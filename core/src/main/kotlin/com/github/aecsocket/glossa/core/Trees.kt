@@ -1,4 +1,4 @@
-package com.github.aecsocket.glossa.api
+package com.github.aecsocket.glossa.core
 
 /**
  * Helper class for tree structures.
