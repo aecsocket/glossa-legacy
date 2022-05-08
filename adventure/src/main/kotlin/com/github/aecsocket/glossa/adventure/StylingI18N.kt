@@ -13,6 +13,9 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable
 import org.spongepowered.configurate.objectmapping.meta.Setting
 import java.util.Locale
 
+/** Serialization key for [StylingFormat.default]. */
+const val DEFAULT = "__default__"
+
 /**
  * Defines style keys for parts of a message.
  * @property default the key of the default style applied.
@@ -20,11 +23,11 @@ import java.util.Locale
  */
 @ConfigSerializable
 data class StylingFormat(
-    @Setting(value = "__default__") val default: String? = null,
-    @Setting(nodeFromParent = true) val args: Map<List<String>, String> = emptyMap()
+    @Setting(value = DEFAULT) val default: String? = null,
+    @Setting(nodeFromParent = true) val args: Map<String, String> = emptyMap()
 ) {
-    constructor(default: String? = null, vararg args: Pair<List<String>, String>) :
-            this(default, args.associate { it })
+    constructor(default: String? = null, vararg args: Pair<String, String>) :
+        this(default, args.associate { it })
 
     companion object {
         /** Format which makes no styling changes. */
@@ -47,7 +50,7 @@ class StylingI18N(
         val defaultStyle = format.default?.let { styles[it] }
         lines.map { line ->
             fun component(token: Templating.FormatToken) =
-                text(token.value).defaultStyle(styles[format.args[token.path]])
+                text(token.value).defaultStyle(styles[format.args[token.path()]])
 
             if (line.size == 1) {
                 component(line[0])
@@ -65,12 +68,31 @@ private fun Component.defaultStyle(style: Style?) = style?.let { applyFallbackSt
 private val CONFIG_OPTIONS = ConfigurationOptions.defaults()
     .serializers {
         it.registerAll(ConfigurateComponentSerializer.configurate().serializers())
+        it.register(Translation::class, Translation.Serializer)
     }
 private const val STYLES = "styles"
 private const val FORMATS = "formats"
 
+/**
+ * Loads styles and formats from a Configurate loader into this I18N.
+ *
+ * **HOCON example**
+ * ```hocon
+ * styles: {
+ *   info: { color: "gray" } # net.kyori.adventure.text.format.Style
+ *   var: { color: "white" }
+ * }
+ * formats: {
+ *   "message.authors": { # com.github.aecsocket.glossa.adventure.StylingFormat
+ *     __default__: "info" # default style key
+ *     "author": "var" # style key for the `author` scope
+ *   }
+ * }
+ * ```
+ * @param loader the loader.
+ */
 @Throws(ConfigurateException::class)
-fun StylingI18N.load(loader: ConfigurationLoader<*>) {
+fun StylingI18N.loadStyling(loader: ConfigurationLoader<*>) {
     val node = loader.load(CONFIG_OPTIONS)
     for ((key, child) in node.node(STYLES).childrenMap()) {
          child.get(Style::class)?.let { styles[key.toString()] = it }
@@ -78,5 +100,4 @@ fun StylingI18N.load(loader: ConfigurationLoader<*>) {
     for ((key, child) in node.node(FORMATS).childrenMap()) {
         child.get(StylingFormat::class)?.let { formats[key.toString()] = it }
     }
-    register(loader.load(CONFIG_OPTIONS).req(Translation::class))
 }

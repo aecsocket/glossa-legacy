@@ -39,7 +39,22 @@ private val CONFIG_OPTIONS = ConfigurationOptions.defaults()
         it.register(Translation::class, Translation.Serializer)
     }
 
+/**
+ * Loads translations from a Configurate loader into this I18N.
+ *
+ * **HOCON example**
+ * ```hocon
+ * __locale__: "en-US" # (required) Locale.forLanguageTag
+ * # Note that, if using `.` in keys, the quotes are required
+ * "message.one": "Message one"
+ * "message.multiline": [
+ *   "Line one"
+ *   "Line two"
+ * ]
+ * ```
+ * @param loader the loader.
+ */
 @Throws(ConfigurateException::class)
-fun MutableI18N<*, *>.load(loader: ConfigurationLoader<*>) {
+fun MutableI18N<*, *>.loadTranslations(loader: ConfigurationLoader<*>) {
     register(loader.load(CONFIG_OPTIONS).req(Translation::class))
 }

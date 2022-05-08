@@ -26,6 +26,7 @@ class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<Stri
      * Singleton Configurate serializer for this type.
      */
     object Serializer : TypeSerializer<Translation> {
+        /** Serialization key for [Translation.locale]. */
         @JvmStatic val LOCALE = "__locale__"
 
         override fun serialize(type: Type, obj: Translation?, node: ConfigurationNode) {

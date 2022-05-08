@@ -120,11 +120,6 @@ data class Lines<T>(
     }
 }
 
-/** Token for the current scope element in a format. */
-const val THIS = "_"
-/** Key for elements which are separators of other tokens. */
-const val SEPARATOR = "__separator__"
-
 /**
  * An immutable parsed version of a message.
  * @property children the children of this node.
@@ -192,9 +187,19 @@ data class ScopeNode(
     override fun toString() = "@$label$children"
 }
 
+/** Regex pattern for scope enter. */
 const val SCOPE_PATTERN = "@([a-z0-9_]+)\\["
+/** Bracket enter. */
 const val ENTER = '['
+/** Bracket exit. */
 const val EXIT = ']'
+
+/** Token for the current scope element in a format. */
+const val THIS = "_"
+/** Key for elements which are separators of other tokens. */
+const val SEPARATOR = "__separator__"
+/** Separator for path entries of [Templating.FormatToken]s. */
+const val FORMAT_TOKEN_SEPARATOR = "."
 
 /**
  * Helper class for templating string messages using a custom scope
@@ -287,7 +292,9 @@ object Templating {
      * @property path the absolute position of this token in the tree.
      * @property value the text value.
      */
-    data class FormatToken(val path: List<String>, val value: String)
+    data class FormatToken(val path: List<String>, val value: String) {
+        fun path() = path.joinToString(FORMAT_TOKEN_SEPARATOR)
+    }
 
     /**
      * Formats a node generated from [parseChildren] into lines of tokens.

@@ -247,7 +247,7 @@ class StringI18NTest {
     @Test
     fun testLoad() {
         val i18n = StringI18N(Locale.US)
-        i18n.load(HoconConfigurationLoader.builder()
+        i18n.loadTranslations(HoconConfigurationLoader.builder()
             .source { BufferedReader(StringReader("""
             __locale__: "en-US"
             "message.single_line": "Single line"
@@ -255,7 +255,8 @@ class StringI18NTest {
               "Line one"
               "Line two"
             ]
-        """.trimIndent())) }.build())
+            """.trimIndent())) }
+            .build())
 
         assertEquals(listOf(
             "Single line"
