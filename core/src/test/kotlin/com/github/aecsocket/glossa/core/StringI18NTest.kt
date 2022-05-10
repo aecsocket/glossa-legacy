@@ -1,5 +1,9 @@
 package com.github.aecsocket.glossa.core
 
+import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.arg
+import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.argList
+import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.argSub
+import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.args
 import org.junit.jupiter.api.Test
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import java.io.BufferedReader
@@ -92,6 +96,30 @@ class StringI18NTest {
     }
 
     @Test
+    fun test() {
+        val i18n = StringI18N(Locale.US)
+        i18n.register(Locale.US,
+            "test" to """
+                Test {value} subst @$<subst>[, ]
+                Details: @<details>[
+                  Number: {num, number}]
+                Lines: @<line>[
+                  <@$<line>>]
+            """.trimIndent())
+        i18n["test", args(
+            "value" arg 5,
+            "subst" argSub {listOf("one", "two")},
+            "details" args {mapOf(
+                "num" arg 12_345.6
+            )},
+            "line" argList {listOf(
+                args("line" argSub {listOf("A")}),
+                args("line" argSub {listOf("B")}),
+            )}
+        )]?.forEach { println("<$it>") }
+    }
+
+    /*@Test
     fun testTemplated() {
         val i18n = i18n()
         assertEquals(listOf(
@@ -266,4 +294,11 @@ class StringI18NTest {
             "Line two"
         ), i18n["message.multi_line"])
     }
+
+    @Test
+    fun test() {
+        val i18n = StringI18N(Locale.US)
+
+        i18n["message", ]
+    }*/
 }

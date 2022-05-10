@@ -10,10 +10,15 @@ import java.util.*
 class StringI18N(
     locale: Locale = Locale.ROOT
 ) : TemplatingI18N<String>(locale) {
-    override fun get(locale: Locale, key: String, args: Args) = format(locale, key, args)?.let { lines ->
-        lines.map { line -> line.joinToString("") { it.value } }
+    override fun get(locale: Locale, key: String, args: ArgumentsMap<String>) = format(locale, key, args)?.let { lines ->
+        lines.map { line -> line.joinToString("") {
+            when (it) {
+                is StringToken<String> -> it.value
+                is RawToken<String> -> it.value
+            }
+        } }
     }
 
-    override fun safe(locale: Locale, key: String, args: Args) =
+    override fun safe(locale: Locale, key: String, args: ArgumentsMap<String>) =
         get(locale, key, args) ?: listOf(key)
 }

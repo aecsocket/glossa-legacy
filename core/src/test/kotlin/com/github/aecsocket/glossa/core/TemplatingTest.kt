@@ -25,7 +25,7 @@ class TemplatingTest {
     @Test
     fun testScope() {
         assertEquals(
-            ContainerNode(listOf(
+            RootNode(listOf(
                 TextNode("Pre "),
                 ScopeNode("label", "", listOf(
                     TextNode("Scope content")
@@ -36,7 +36,7 @@ class TemplatingTest {
         )
 
         assertEquals(
-            ContainerNode(listOf(
+            RootNode(listOf(
                 TextNode("Pre "),
                 ScopeNode("one", "", listOf(
                     TextNode("Scope one "),

@@ -5,19 +5,19 @@ import net.kyori.adventure.text.ComponentBuilder
 import net.kyori.adventure.text.ComponentLike
 import net.kyori.adventure.text.JoinConfiguration
 
-/** @see [append] */
+/** @see [Component.append] */
 operator fun Component.plus(like: ComponentLike) = append(like)
-/** @see [append] */
+/** @see [Component.append] */
 operator fun Component.plus(component: Component) = append(component)
-/** @see [append] */
+/** @see [Component.append] */
 operator fun Component.plus(builder: ComponentBuilder<*, *>) = append(builder)
 
-/** @see [append] */
+/** @see [Component.append] */
 operator fun <B : ComponentBuilder<*, B>> B.plus(like: ComponentLike): B = append(like)
-/** @see [append] */
+/** @see [Component.append] */
 operator fun <B : ComponentBuilder<*, B>> B.plus(component: Component): B = append(component)
-/** @see [append] */
+/** @see [Component.append] */
 operator fun <B : ComponentBuilder<*, B>> B.plus(builder: ComponentBuilder<*, *>): B = append(builder)
 
-/** @see [join] */
+/** @see [Component.join] */
 fun Iterable<ComponentLike>.join(config: JoinConfiguration = JoinConfiguration.newlines()) = Component.join(config, this)

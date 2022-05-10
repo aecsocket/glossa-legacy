@@ -5,14 +5,6 @@ import java.text.FieldPosition
 import java.util.Locale
 
 /**
- * An exception that occurs when localizing.
- * @param key the key being localized.
- * @param message the exception message.
- */
-open class I18NException(key: String, message: String) :
-    RuntimeException("($key) $message")
-
-/**
  * A service to localize a given key based on a locale,
  * generating a [T].
  *
