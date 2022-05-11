@@ -1,10 +1,11 @@
 package com.github.aecsocket.glossa.adventure
 
 import com.github.aecsocket.glossa.core.*
+import com.github.aecsocket.glossa.core.TemplatingI18N.ArgumentMap
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
+import net.kyori.adventure.text.minimessage.MiniMessage
 import org.spongepowered.configurate.ConfigurateException
 import org.spongepowered.configurate.ConfigurationOptions
 import org.spongepowered.configurate.kotlin.extensions.get
@@ -38,9 +39,19 @@ data class StylingFormat(
 /**
  * I18N service which uses [StylingFormat]s and [Style]s to localize
  * into Adventure [Component]s.
+ *
+ * For [safe] calls, returns a list with the key passed as a [net.kyori.adventure.text.TextComponent].
+ *
+ * The steps taken for localization are:
+ * 1. Look up the format string for the given locale and key, using fallback locale if needed
+ * 2. (Cached) Convert the format string to a [TemplateNode] representation
+ * 3. Using the [ArgumentMap] and [TemplateNode], generate the lines of [FormatToken]s.
+ * 4. For each string token, it is parsed through [miniMessage]'s [MiniMessage.deserialize].
+ * 5. For each raw token, it is added to the result.
  */
 class StylingI18N(
-    locale: Locale = Locale.ROOT
+    locale: Locale = Locale.ROOT,
+    val miniMessage: MiniMessage = MiniMessage.miniMessage()
 ) : AdventureI18N(locale) {
     val styles = HashMap<String, Style>()
     val formats = HashMap<String, StylingFormat>()
@@ -50,7 +61,7 @@ class StylingI18N(
         val defaultStyle = format.default?.let { styles[it] }
         lines.map { line ->
             val res = line.map { when (it) {
-                is StringToken<Component> -> text(it.value)
+                is StringToken<Component> -> miniMessage.deserialize(it.value)
                 is RawToken<Component> -> it.value
             }.defaultStyle(styles[format.args[it.path()]]) }
 

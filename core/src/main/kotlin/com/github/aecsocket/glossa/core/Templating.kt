@@ -171,26 +171,32 @@ object Templating {
     /**
      * Parses out a format string into its constituent nodes.
      *
-     * Scope block enter/exits are done through [PATTERN] and [EXIT],
-     * where the text immediately after the `@` defines the label,
+     * Scope block enter/exits are defined by [PATTERN] and [EXIT],
+     * where the text between `<>` defines the key,
      * the text between the first set of brackets defines the content,
-     * and the text between the last set of brackets defines the separator.
+     * and the optional text between the last set of brackets defines the separator.
+     *
+     * Substitutions are defined by [PATTERN],
+     * where the text between `<>` defines the key,
+     * and the optional text between the brackets defines the separator.
      *
      * **Format**
      *
-     *     Actions on {date, date, short}: @action[
-     *       Purchases: {purchases, number} @entry[
-     *         - {item} x{amount}]]
+     *     Actions on {date, date, short}: @<action>[
+     *       Purchases: {purchases, number} @<entry>[
+     *         - "@$<item>[, ]" x{amount}]]
      *
      * **Result**
      *
      *     ├─ <Actions on {date, date, short}: >
-     *     └─ @action []
+     *     └─ @<action> []
      *         ├─ <>
      *         │  <  Purchases: {purchases, number} >
-     *         └─ @entry []
-     *             └─ <>
-     *                <    - {item} x{amount}>
+     *         └─ @<entry> []
+     *             ├─ <>
+     *             │  <    - ">
+     *             ├─ @$<item> [, ]
+     *             └─ <" x{amount}>
      *
      * @param format the string format.
      * @param startIndex the index in the string from which to start.

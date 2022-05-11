@@ -6,7 +6,7 @@ junit = "5.7.2"
 icu4j = "68.1"
 configurate = "4.1.2"
 
-adventure = "4.10.0"
+adventure = "4.10.1"
 
 [libraries]
 
@@ -19,12 +19,13 @@ configurateHocon = { group = "org.spongepowered", name = "configurate-hocon", ve
 configurateExtraKotlin = { group = "org.spongepowered", name = "configurate-extra-kotlin", version.ref = "configurate" }
 
 adventureApi = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
-adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-serializer-gson", version.ref = "adventure" }
 adventureSerializerConfigurate = { group = "net.kyori", name = "adventure-serializer-configurate4", version.ref = "adventure" }
+adventureTextMiniMessage = { group = "net.kyori", name = "adventure-text-minimessage", version.ref = "adventure" }
+adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-serializer-gson", version.ref = "adventure" }
 
 [bundles]
 
 configurate = [ "configurateHocon", "configurateExtraKotlin" ]
 junit = [ "jupiterApi", "jupiterEngine" ]
 
-adventure = [ "adventureApi", "adventureSerializerConfigurate" ]
+adventure = [ "adventureApi", "adventureTextMiniMessage", "adventureSerializerConfigurate" ]

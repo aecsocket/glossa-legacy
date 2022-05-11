@@ -2,6 +2,7 @@ package com.github.aecsocket.glossa.adventure
 
 import com.github.aecsocket.glossa.core.*
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.keybind
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.format.Style.style
@@ -24,6 +25,7 @@ const val TEMPLATED = "templated"
 const val SEPARATED = "separated"
 const val SUBSTITUTED = "substituted"
 const val SUBSTITUTED_SEPARATED = "substituted_separated"
+const val MINIMESSAGE = "minimessage"
 
 class StylingI18NTest {
     private fun i18n() = StylingI18N(Locale.US).apply {
@@ -36,7 +38,8 @@ class StylingI18NTest {
             TEMPLATED to "Template: >{value}<",
             SEPARATED to "Authors: @<author>[{_}][, ]",
             SUBSTITUTED to "Substituted: >@$<subst><",
-            SUBSTITUTED_SEPARATED to "Substituted: >@$<subst>[, ]<")
+            SUBSTITUTED_SEPARATED to "Substituted: >@$<subst>[, ]<",
+            MINIMESSAGE to "Jump key: <key:key.jump>, <red>red</red>, nested: @<scope>[<blue>content]")
 
         styles[INFO] = style(WHITE)
         styles[VAR] = style(YELLOW)
@@ -123,6 +126,29 @@ class StylingI18NTest {
         ), i18n[SUBSTITUTED_SEPARATED, argMap(
             "subst" argSub {listOf(text("Red", RED), text("Blue", BLUE))}
         )])
+    }
+
+    @Test
+    fun testMiniMessage() {
+        val i18n = i18n()
+
+        i18n[MINIMESSAGE, argMap(mapOf(
+            "scope" argMap {mapOf()}
+        ))]?.forEach { println(it) }
+
+        // The component tree is kind of weird, but that's just minimessage
+        equalComponents(listOf(
+            text()
+                .append(text("Jump key: ")
+                    .append(keybind("key.jump")
+                        .append(text(", "))
+                        .append(text("red", RED))
+                        .append(text(", nested: "))))
+                .append(text("content", BLUE))
+            .build()
+        ), i18n[MINIMESSAGE, argMap(mapOf(
+            "scope" argMap {mapOf()}
+        ))])
     }
 
     @Test

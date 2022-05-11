@@ -31,6 +31,12 @@ data class RawToken<E>(
  * to perform formatting.
  *
  * Handles caching template nodes and provides utilities to format using [Templating].
+ *
+ * The steps taken for localization are:
+ * 1. Look up the format string for the given locale and key, using fallback locale if needed
+ * 2. (Cached) Convert the format string to a [TemplateNode] representation
+ * 3. Using the [ArgumentMap] and [TemplateNode], generate the lines of [FormatToken]s.
+ * 4. These are converted to [E] lists based on implementation.
  */
 abstract class TemplatingI18N<E>(
     locale: Locale = Locale.ROOT
@@ -113,10 +119,10 @@ abstract class TemplatingI18N<E>(
      * **Node**
      *
      *     ├─ <Actions on {date, date, long}: >
-     *     └─ @action []
+     *     └─ @<action> []
      *         ├─ <>
      *         │  <  {purchases, plural, one {# purchase:} other {# purchases:}} >
-     *         └─ @entry []
+     *         └─ @<entry> []
      *             └─ <>
      *                <    - {item} x{amount}>
      *
@@ -156,7 +162,7 @@ abstract class TemplatingI18N<E>(
      * @param path the current depth of the node.
      * @return the lines of tokens.
      */
-    protected fun format(
+    private fun format(
         locale: Locale,
         node: TemplateNode,
         args: ArgumentMap<E>.State,

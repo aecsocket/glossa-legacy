@@ -4,7 +4,7 @@
 
 # [Glossa](https://aecsocket.github.io/glossa)
 
-`0.2.0-SNAPSHOT`:
+`0.2.1-SNAPSHOT`:
 [![build](https://github.com/aecsocket/glossa/actions/workflows/build.yml/badge.svg)](https://github.com/aecsocket/glossa/actions/workflows/build.yml)
 
 </div>
