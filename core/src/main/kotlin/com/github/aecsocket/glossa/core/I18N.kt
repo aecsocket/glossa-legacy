@@ -10,6 +10,8 @@ import java.util.Locale
  *
  * Arguments are provided as [A] instances.
  *
+ * @param T the generated object type.
+ * @param A the arguments type.
  * @property locale the default locale to use, when none is specified,
  * or when a key is not found for a locale.
  */

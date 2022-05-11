@@ -197,7 +197,8 @@ class StylingI18NTest {
         equalComponents(listOf(
             text("", WHITE) +
                 text("Entry: ") +
-                text("one = 1", YELLOW),
+                text("one = 1", YELLOW) +
+                text(""),
             text("", WHITE) +
                 text("Entry: ") +
                 text("two = 2", YELLOW)

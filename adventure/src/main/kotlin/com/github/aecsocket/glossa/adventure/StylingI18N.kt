@@ -4,6 +4,8 @@ import com.github.aecsocket.glossa.core.*
 import com.github.aecsocket.glossa.core.TemplatingI18N.ArgumentMap
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.empty
+import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.spongepowered.configurate.ConfigurateException
@@ -65,8 +67,18 @@ class StylingI18N(
                 is RawToken<Component> -> it.value
             }.defaultStyle(styles[format.args[it.path()]]) }
 
-            (if (res.size == 1) res[0] else res.join())
-                .defaultStyle(defaultStyle)
+            if (res.size == 1) {
+                res[0].defaultStyle(defaultStyle)
+            } else {
+                val component = text()
+                for (child in res) {
+                    // this took so long to debug why tests were failing
+                    if (child != empty()) {
+                        component.append(child)
+                    }
+                }
+                component.build().defaultStyle(defaultStyle)
+            }
         }
     }
 }

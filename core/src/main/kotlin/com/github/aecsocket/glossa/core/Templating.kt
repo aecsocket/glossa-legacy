@@ -93,7 +93,9 @@ const val ENTER = '['
 const val EXIT = ']'
 /** Regex pattern for a special token. */
 const val PATTERN = "(@\\\$?)<([a-z0-9_]+)>(\\[)?"
+/** Start of token representing a scope enter. */
 const val TOKEN_SCOPE = "@"
+/** Start of token representing a substitution. */
 const val TOKEN_SUBSTITUTION = "@$"
 
 /** Key for elements which are separators of other tokens. */
@@ -167,7 +169,6 @@ object Templating {
         return res
     }
 
-    // TODO update javadoc
     /**
      * Parses out a format string into its constituent nodes.
      *

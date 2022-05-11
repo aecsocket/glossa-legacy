@@ -10,17 +10,34 @@ const val THIS = "_"
 /** Separator for path entries of [FormatToken]s. */
 const val FORMAT_TOKEN_SEPARATOR = "."
 
+/**
+ * A token generated from parsing a node.
+ * @param E the element type of the translation target.
+ * @property path the path from the root to this node.
+ */
 sealed interface FormatToken<E> {
     val path: List<String>
 
+    /**
+     * Joins the path using [FORMAT_TOKEN_SEPARATOR].
+     * @return the joined path.
+     */
     fun path() = path.joinToString(FORMAT_TOKEN_SEPARATOR)
 }
 
+/**
+ * A token storing a string value.
+ * @param value the string value.
+ */
 data class StringToken<E>(
     val value: String,
     override val path: List<String>
 ) : FormatToken<E>
 
+/**
+ * A token storing a value of the translation target type.
+ * @param value the translation target value.
+ */
 data class RawToken<E>(
     val value: E,
     override val path: List<String>
@@ -114,7 +131,7 @@ abstract class TemplatingI18N<E>(
     }
 
     /**
-     * Formats a node generated from [parseChildren] into lines of tokens.
+     * Formats a node generated from [Templating.parseChildren] into lines of tokens.
      *
      * **Node**
      *
@@ -251,28 +268,66 @@ abstract class TemplatingI18N<E>(
         }
     }
 
+    /**
+     * A value which can be replaced in a format string.
+     * @param E the element type of the translation target.
+     */
     sealed interface Argument<E> {
+        /**
+         * The mutable state of an argument, currently being used for localization.
+         * @param E the element type of the translation target.
+         * @property arg the backing argument.
+         */
         interface State<E> {
             val arg: Argument<E>
         }
 
+        /**
+         * A state which stores no state other than the backing argument.
+         */
         data class NoState<E>(override val arg: Argument<E>) : State<E>
 
+        /**
+         * Creates a blank state object from this argument.
+         * @return the state.
+         */
         fun createState(): State<E>
 
         companion object {
+            /**
+             * Creates an argument with no function.
+             * @return the argument.
+             */
             @JvmStatic fun <E> empty() = argMap<E>()
         }
     }
 
+    /**
+     * An argument representing a raw value passed to ICU [MessageFormat].
+     *
+     * Creates [Argument.NoState] state.
+     * @property value the raw value.
+     */
     data class RawArgument<E>(val value: Any) : Argument<E> {
         override fun createState() = Argument.NoState(this)
     }
 
+    /**
+     * An argument representing a value of type List<[E]>.
+     *
+     * Creates [Argument.NoState] state.
+     * @property value the list of [E]s.
+     */
     data class SubstitutionArgument<E>(val value: List<E>) : Argument<E> {
         override fun createState() = Argument.NoState(this)
     }
 
+    /**
+     * An argument representing a [Localizable] object which can be converted to List<[E]>.
+     *
+     * Creates [LocalizedArgument.State] state.
+     * @property value the localizable.
+     */
     data class LocalizedArgument<E>(val value: Localizable<E>) : Argument<E> {
         inner class State : Argument.State<E> {
             override val arg: Argument<E>
@@ -287,6 +342,12 @@ abstract class TemplatingI18N<E>(
         override fun createState() = State()
     }
 
+    /**
+     * An argument representing a key-value map of strings to [Argument] creators.
+     *
+     * Creates [ArgumentMap.State] state.
+     * @property args the arguments.
+     */
     data class ArgumentMap<E>(val args: Map<String, () -> Argument<E>>) : Argument<E> {
         inner class State(private val cache: MutableMap<String, Argument.State<E>?> = HashMap()) : Argument.State<E> {
             override val arg: Argument<E>
@@ -310,6 +371,12 @@ abstract class TemplatingI18N<E>(
         operator fun plus(o: ArgumentMap<E>) = ArgumentMap(args + o.args)
     }
 
+    /**
+     * An argument representing a list of [Argument]s.
+     *
+     * Creates [ArgumentList.State] state.
+     * @property args the arguments.
+     */
     data class ArgumentList<E>(val args: List<Argument<E>>) : Argument<E> {
         inner class State : Argument.State<E> {
             override val arg: Argument<E>
@@ -330,41 +397,63 @@ abstract class TemplatingI18N<E>(
     }
 }
 
+/**
+ * An object which can be interpreted as a list of [E]s, as a result
+ * of localizing this object.
+ */
 interface Localizable<E> {
+    /**
+     * Generates the translated version of this object.
+     * @param i18n the I18N service used for translation.
+     * @param locale the locale used.
+     * @return the list of [E] translation targets.
+     */
     fun localize(i18n: TemplatingI18N<E>, locale: Locale): List<E>
 }
 
+/** @see TemplatingI18N.RawArgument */
 fun <E> arg(value: Any) = TemplatingI18N.RawArgument<E>(value)
 
+/** @see TemplatingI18N.SubstitutionArgument */
 fun <E> argSub(value: List<E>) = TemplatingI18N.SubstitutionArgument(value)
 
+/** @see TemplatingI18N.LocalizedArgument */
 fun <E> argTl(value: Localizable<E>) = TemplatingI18N.LocalizedArgument(value)
 
+/** @see TemplatingI18N.ArgumentMap */
 fun <E> argMap(value: Map<String, () -> TemplatingI18N.Argument<E>>) = TemplatingI18N.ArgumentMap(value)
 
+/** @see TemplatingI18N.ArgumentMap */
 fun <E> argMap(vararg args: Pair<String, () -> TemplatingI18N.Argument<E>>) = argMap(args.associate { it })
 
+/** @see TemplatingI18N.ArgumentList */
 fun <E> argList(value: List<TemplatingI18N.Argument<E>>) = TemplatingI18N.ArgumentList(value)
 
+/** @see TemplatingI18N.ArgumentList */
 fun <E> argList(vararg args: TemplatingI18N.Argument<E>) = argList(args.toList())
 
+/** @see arg */
 infix fun <E> String.arg(value: () -> Any) =
     Pair(this) { arg<E>(value()) }
 
+/** @see argSub */
 infix fun <E> String.argSub(value: () -> List<E>) =
     Pair(this) { argSub(value()) }
 
+/** @see argTl */
 infix fun <E> String.argTl(value: () -> Localizable<E>) =
     Pair(this) { argTl(value()) }
 
+/** @see argMap */
 infix fun <E> String.argMap(value: () -> Map<String, () -> TemplatingI18N.Argument<E>>) =
     Pair(this) { argMap(value()) }
 
+/** @see argList */
 infix fun <E> String.argList(value: () -> List<TemplatingI18N.Argument<E>>) =
     Pair(this) { argList(value()) }
 
 @JvmInline
-value class Lines<T : Any>(val lines: MutableList<MutableList<T>> = ArrayList()) {
+private value class Lines<T : Any>(val lines: MutableList<MutableList<T>> = ArrayList()) {
     fun add(other: List<List<T>>) {
         if (other.isEmpty())
             return
@@ -387,7 +476,6 @@ value class Lines<T : Any>(val lines: MutableList<MutableList<T>> = ArrayList())
               [ "one", "two" ]
               [ "newline" ]
             ]
-            todo convert to javadoc
              */
             lines.last().addAll(other.first())
             lines.addAll(other.subList(1, other.size).map { it.toMutableList() })
