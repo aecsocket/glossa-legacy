@@ -26,13 +26,6 @@ data class RawToken<E>(
     override val path: List<String>
 ) : FormatToken<E>
 
-data class ArgumentInstance<E>(
-    val handle: TemplatingI18N.ArgumentsMap<E>,
-    val built: MutableMap<String, TemplatingI18N.Argument<E>?> = HashMap()
-) {
-    operator fun get(key: String) = built.computeIfAbsent(key) { handle.args[it]?.create() }
-}
-
 /**
  * Partial implementation of an I18N service which uses the [Templating] methods
  * to perform formatting.
@@ -41,7 +34,7 @@ data class ArgumentInstance<E>(
  */
 abstract class TemplatingI18N<E>(
     locale: Locale = Locale.ROOT
-) : AbstractI18N<List<E>, TemplatingI18N.ArgumentsMap<E>>(locale) {
+) : AbstractI18N<List<E>, TemplatingI18N.ArgumentMap<E>>(locale) {
     private val cache = HashMap<Locale, MutableMap<String, TemplateNode?>>()
 
     /**
@@ -51,11 +44,11 @@ abstract class TemplatingI18N<E>(
      * @param args the args.
      * @return the lines of format tokens.
      */
-    protected fun format(locale: Locale, key: String, args: ArgumentsMap<E>): List<List<FormatToken<E>>>? {
+    protected fun format(locale: Locale, key: String, args: ArgumentMap<E>): List<List<FormatToken<E>>>? {
         return cache.computeIfAbsent(locale) { HashMap() }.computeIfAbsent(key) {
             translation(locale, key)?.let { Templating.parse(it) }
         }?.let { node ->
-            format(locale, node, ArgumentInstance(args)).lines
+            format(locale, node, args.createState()).lines
         }
     }
 
@@ -166,10 +159,10 @@ abstract class TemplatingI18N<E>(
     protected fun format(
         locale: Locale,
         node: TemplateNode,
-        args: ArgumentInstance<E>,
+        args: ArgumentMap<E>.State,
         path: List<String> = emptyList()
     ): Lines<FormatToken<E>> {
-        fun join(tokens: List<Lines<FormatToken<E>>>, separator: String): Lines<FormatToken<E>> {
+        fun join(path: List<String>, tokens: List<Lines<FormatToken<E>>>, separator: String): Lines<FormatToken<E>> {
             val sepPath = path + SEPARATOR
             val separatorLines = separator.split('\n').map { listOf(StringToken<E>(it, sepPath)) }
 
@@ -186,15 +179,10 @@ abstract class TemplatingI18N<E>(
         return when (node) {
             is TextNode -> {
                 val built = HashMap<String, Any?>()
-                args.handle.args.forEach { (key, value) ->
-                    // for every pre-computed arg here (ones that make a RawArgument, basically)
-                    // we compute them here, so we can use them in the ICU MessageFormat
-
-                    // we *could* only compute the templates that appear in the msg
-                    //     node.value.contains("{$key")
-                    // but that's hacky. maybe try this later?
-                    if (value is ComputedArgumentFactory<E>) {
-                        built[key] = when (val arg = args[key]) {
+                args.forEach { key, value ->
+                    // compute args only if it's seen as an ICU message format
+                    if (node.value.contains("{$key")) {
+                        built[key] = when (val arg = args[key]?.arg) {
                             is RawArgument<E> -> arg.value
                             else -> null
                         }
@@ -207,33 +195,45 @@ abstract class TemplatingI18N<E>(
             }
             // TODO strict opportunities
             is ScopeNode -> {
-                fun handle(arg: Argument<E>): Lines<FormatToken<E>> = when (arg) {
-                    // this is handled when it's a TextNode
-                    // but on its own, don't do anything
-                    is RawArgument<E> -> Lines()
-                    is ArgumentsMap<E> -> {
-                        val lines = Lines<FormatToken<E>>()
-                        val newPath = path + node.key
-                        node.children.forEach { child ->
-                            lines += format(locale, child, ArgumentInstance(arg), newPath)
+                args[node.key]?.let {
+                    val newPath = path + node.key
+                    fun handle(state: Argument.State<E>): Lines<FormatToken<E>> = when (state) {
+                        is ArgumentMap<E>.State -> {
+                            val lines = Lines<FormatToken<E>>()
+                            node.children.forEach { child ->
+                                lines += format(locale, child, state, newPath)
+                            }
+                            lines
                         }
-                        lines
+                        is ArgumentList<E>.State -> join(newPath, state.cache.map { handle(it) }, node.separator)
+                        else -> when (val arg = state.arg) {
+                            is RawArgument<E> -> {
+                                val lines = Lines<FormatToken<E>>()
+                                val valueState = argMap(THIS to {arg}).createState()
+                                node.children.forEach { child ->
+                                    lines += format(locale, child, valueState, newPath)
+                                }
+                                lines
+                            }
+                            else -> Lines()
+                        } // strict opportunity
                     }
-                    is ArgumentsList<E> -> join(arg.args.map { handle(it) }, node.separator)
-                    else -> Lines() // strict opportunity
-                }
 
-                args[node.key]?.let { handle(it) } ?: Lines() // strict opportunity
+                    handle(it)
+                } ?: Lines() // strict opportunity
             }
             is SubstitutionNode -> {
-                fun subst(value: List<E>) =
-                    join(value.map { Lines(mutableListOf(mutableListOf(RawToken(it, path)))) }, node.separator)
+                args[node.key]?.let { state ->
+                    val newPath = path + node.key
+                    fun subst(value: List<E>) =
+                        join(newPath, value.map { Lines(mutableListOf(mutableListOf(RawToken(it, newPath)))) }, node.separator)
 
-                args[node.key]?.let { arg ->
-                    when (arg) {
-                        is SubstitutionArgument<E> -> subst(arg.value)
-                        is LocalizedArgument<E> -> subst(arg.value.localize(this, locale))
-                        else -> Lines() // strict opportunity
+                    when (state) {
+                        is LocalizedArgument<E>.State -> subst(state.value(this, locale))
+                        else -> when (val arg = state.arg) {
+                            is SubstitutionArgument<E> -> subst(arg.value)
+                            else -> Lines() // strict opportunity
+                        }
                     }
                 } ?: Lines() // strict opportunity
             }
@@ -245,187 +245,117 @@ abstract class TemplatingI18N<E>(
         }
     }
 
-        /*node.children.forEach {
-            lines += format(locale, it, args, path)
-        }*/
-
-
-        /*is TextNode -> {
-            val builtArgs = HashMap<String, Any?>()
-            args.forEach { key, value ->
-                /*
-                Other method: invoke the arg only if it appears as an ICU template
-                But this is relatively hacky. Instead, we'll just invoke all args in the current scope.
-                if (node.value.contains("{$key")) { // ICU template start
-                    builtArgs[key] = value.invoke()
-                }
-
-                 */
-                builtArgs[key] = value.invoke()
-            }
-            Lines.fromText(MessageFormat(node.value, locale).asString(builtArgs)) { Templating.FormatToken(path, it) }
-        }
-        is ScopeNode -> {
-            fun linesOfArgs(args: Args): Lines<Templating.FormatToken> {
-                var lines = Lines<Templating.FormatToken>()
-                node.children.forEach { child ->
-                    lines += format(locale, child, args, path + node.label)
-                }
-                return lines
-            }
-
-            args[node.label]?.let { valueFactory ->
-                fun handle(value: Any): Lines<Templating.FormatToken> = when (value) {
-                    is MultiArgs -> {
-                        var totalLines = Lines<Templating.FormatToken>()
-                        val childLines = value.args.map { handle(it()) }
-                        val separator = Lines.fromText(node.separator) {
-                            Templating.FormatToken(
-                                path + node.label + SEPARATOR,
-                                it
-                            )
-                        }
-                        childLines.forEachIndexed { idx, lines ->
-                            totalLines += lines
-                            if (idx < childLines.size - 1) {
-                                totalLines += separator
-                            }
-                        }
-                        totalLines
-                    }
-                    is Args -> linesOfArgs(value)
-                    else -> linesOfArgs(Args(mapOf(THIS to { value })))
-                }
-
-                handle(valueFactory())
-            } ?: Lines()
-        }
-        else -> {
-            var lines = Lines<Templating.FormatToken>()
-            node.children.forEach {
-                lines += format(locale, it, args, path)
-            }
-            lines
-        }*/
-
     sealed interface Argument<E> {
+        interface State<E> {
+            val arg: Argument<E>
+        }
+
+        data class NoState<E>(override val arg: Argument<E>) : State<E>
+
+        fun createState(): State<E>
+
         companion object {
-            @JvmStatic fun <E> empty() = args<E>()
+            @JvmStatic fun <E> empty() = argMap<E>()
         }
     }
 
-    sealed interface ArgumentFactory<E> {
-        fun create(): Argument<E>
+    data class RawArgument<E>(val value: Any) : Argument<E> {
+        override fun createState() = Argument.NoState(this)
     }
 
-    fun interface ComputedArgumentFactory<E> : ArgumentFactory<E> {
-        override fun create(): RawArgument<E>
+    data class SubstitutionArgument<E>(val value: List<E>) : Argument<E> {
+        override fun createState() = Argument.NoState(this)
     }
 
-    fun interface LazyArgumentFactory<E> : ArgumentFactory<E>
+    data class LocalizedArgument<E>(val value: Localizable<E>) : Argument<E> {
+        inner class State : Argument.State<E> {
+            override val arg: Argument<E>
+                get() = this@LocalizedArgument
 
+            private var cache: List<E>? = null
 
-    data class RawArgument<E>(val value: Any) : Argument<E>
+            fun value(i18n: TemplatingI18N<E>, locale: Locale) = cache
+                ?: value.localize(i18n, locale).also { cache = it }
+        }
 
-    data class SubstitutionArgument<E>(val value: List<E>) : Argument<E>
-
-    data class LocalizedArgument<E>(val value: Localizable<E>) : Argument<E>
-
-    data class ArgumentsMap<E>(val args: Map<String, ArgumentFactory<E>>) : Argument<E>
-
-    data class ArgumentsList<E>(val args: List<Argument<E>>) : Argument<E>
-
-    interface Localizable<E> {
-        fun localize(i18n: TemplatingI18N<E>, locale: Locale): List<E>
+        override fun createState() = State()
     }
 
-    companion object {
-        @JvmStatic
-        fun <E> arg(value: Any) = RawArgument<E>(value)
+    data class ArgumentMap<E>(val args: Map<String, () -> Argument<E>>) : Argument<E> {
+        inner class State(private val cache: MutableMap<String, Argument.State<E>?> = HashMap()) : Argument.State<E> {
+            override val arg: Argument<E>
+                get() = this@ArgumentMap
 
-        @JvmStatic
-        fun <E> argSub(value: List<E>) = SubstitutionArgument(value)
+            operator fun get(key: String) = cache.computeIfAbsent(key) { args[it]?.invoke()?.createState() }
 
-        @JvmStatic
-        fun <E> argTl(value: Localizable<E>) = LocalizedArgument(value)
-
-        @JvmStatic
-        fun <E> args(value: Map<String, ArgumentFactory<E>>) = ArgumentsMap(value)
-
-        @JvmStatic
-        fun <E> args(vararg args: Pair<String, ArgumentFactory<E>>) = args(args.associate { it })
-
-        @JvmStatic
-        fun <E> argList(value: List<Argument<E>>) = ArgumentsList(value)
-
-        @JvmStatic
-        fun <E> argList(vararg args: Argument<E>) = argList(args.toList())
-
-        infix fun <E> String.arg(value: Any) =
-            Pair(this, ComputedArgumentFactory { TemplatingI18N.arg<E>(value) })
-
-        infix fun <E> String.argSub(value: () -> List<E>) =
-            Pair(this, LazyArgumentFactory { argSub(value()) })
-
-        infix fun <E> String.argTl(value: () -> Localizable<E>) =
-            Pair(this, LazyArgumentFactory { argTl(value()) })
-
-        infix fun <E> String.args(value: () -> Map<String, ArgumentFactory<E>>) =
-            Pair(this, LazyArgumentFactory { args(value()) })
-
-        infix fun <E> String.argList(value: () -> List<Argument<E>>) =
-            Pair(this, LazyArgumentFactory { argList(value()) })
-
-        fun test() {
-            data class SubItem(
-                val id: String,
-                val count: Int
-            ) : Localizable<String> {
-                override fun localize(i18n: TemplatingI18N<String>, locale: Locale) =
-                    i18n.safe(locale, "item.$id")
+            fun forEach(action: (String, Argument.State<E>) -> Unit) {
+                args.forEach { (key, _) ->
+                    get(key)?.let { action(key, it) }
+                }
             }
-
-            /*
-            Actions: @<purchase>[
-              {total plural, one {# purchase} other {# purchases}}: @<entry>[
-                - "@$<item>[]" x{amount, number}]]
-             */
-
-            val locale = Locale.US
-            val i18n = StringI18N(locale)
-            args<String>(
-                "details" args {mapOf(
-                    "amount" arg 12_345.6
-                )},
-                "sub" argSub {listOf("hello")},
-                "localized" argTl {SubItem("my_item", 5)},
-                "localized_sub" argSub {SubItem("my_item", 5).localize(i18n, locale)},
-                "purchase" argList {listOf(args(
-                    "total" arg 5,
-                    "entry" argList {listOf(args(
-                        "name" arg "Item one",
-                        "amount" arg 3
-                    ), args(
-                        "name" arg "Item two",
-                        "amount" arg 2
-                    ))}
-                ), args(
-                    "total" arg 1,
-                    "entry" argList {listOf(args(
-                        "name" arg "Item",
-                        "amount" arg 1
-                    ))}
-                ))}
-            )
-
-            args<String>(
-                "details" to LazyArgumentFactory { args(
-                    "amount" to ComputedArgumentFactory { arg(12_345.6) }
-                ) }
-            )
         }
+
+        override fun createState() = State()
+
+        operator fun plus(o: Map<String, () -> Argument<E>>) = ArgumentMap(args + o)
+
+        operator fun plus(o: Pair<String, () -> Argument<E>>) = ArgumentMap(args + o)
+
+        operator fun plus(o: ArgumentMap<E>) = ArgumentMap(args + o.args)
+    }
+
+    data class ArgumentList<E>(val args: List<Argument<E>>) : Argument<E> {
+        inner class State : Argument.State<E> {
+            override val arg: Argument<E>
+                get() = this@ArgumentList
+
+            val cache: Array<Argument.State<E>> by lazy {
+                Array(args.size) { args[it].createState() }
+            }
+        }
+
+        override fun createState() = State()
+
+        operator fun plus(o: List<Argument<E>>) = ArgumentList(args + o)
+
+        operator fun plus(o: Argument<E>) = ArgumentList(args + o)
+
+        operator fun plus(o: ArgumentList<E>) = ArgumentList(args + o.args)
     }
 }
+
+interface Localizable<E> {
+    fun localize(i18n: TemplatingI18N<E>, locale: Locale): List<E>
+}
+
+fun <E> arg(value: Any) = TemplatingI18N.RawArgument<E>(value)
+
+fun <E> argSub(value: List<E>) = TemplatingI18N.SubstitutionArgument(value)
+
+fun <E> argTl(value: Localizable<E>) = TemplatingI18N.LocalizedArgument(value)
+
+fun <E> argMap(value: Map<String, () -> TemplatingI18N.Argument<E>>) = TemplatingI18N.ArgumentMap(value)
+
+fun <E> argMap(vararg args: Pair<String, () -> TemplatingI18N.Argument<E>>) = argMap(args.associate { it })
+
+fun <E> argList(value: List<TemplatingI18N.Argument<E>>) = TemplatingI18N.ArgumentList(value)
+
+fun <E> argList(vararg args: TemplatingI18N.Argument<E>) = argList(args.toList())
+
+infix fun <E> String.arg(value: () -> Any) =
+    Pair(this) { arg<E>(value()) }
+
+infix fun <E> String.argSub(value: () -> List<E>) =
+    Pair(this) { argSub(value()) }
+
+infix fun <E> String.argTl(value: () -> Localizable<E>) =
+    Pair(this) { argTl(value()) }
+
+infix fun <E> String.argMap(value: () -> Map<String, () -> TemplatingI18N.Argument<E>>) =
+    Pair(this) { argMap(value()) }
+
+infix fun <E> String.argList(value: () -> List<TemplatingI18N.Argument<E>>) =
+    Pair(this) { argList(value()) }
 
 @JvmInline
 value class Lines<T : Any>(val lines: MutableList<MutableList<T>> = ArrayList()) {

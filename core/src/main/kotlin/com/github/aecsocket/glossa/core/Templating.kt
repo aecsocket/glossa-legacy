@@ -20,7 +20,7 @@ sealed interface TemplateNode {
  */
 fun TemplateNode.renderTree(): List<String> = if (this is ContainerNode) Trees.render(children,
     { it.treeValue() },
-    { it.renderTree() }) else treeValue()
+    { it.renderTree() }) else emptyList()
 
 /**
  * A node holding raw text.
@@ -109,21 +109,13 @@ object Templating {
     private fun parseChildren(format: String, startIndex: Int = 0): List<TemplateNode> {
         fun MutableList<TemplateNode>.addText(value: String) {
             if (value.isNotEmpty()) {
-                if (isNotEmpty()) {
-                    val idx = size - 1
-                    val last = get(idx)
-                    if (last is TextNode) {
-                        set(idx, TextNode(last.value + value))
-                    }
-                } else {
-                    add(TextNode(value))
-                }
+                add(TextNode(value))
             }
         }
 
         val res = ArrayList<TemplateNode>()
         Regex(PATTERN).find(format, startIndex)?.let { match ->
-            res.add(TextNode(format.substring(startIndex, match.range.first)))
+            res.addText(format.substring(startIndex, match.range.first))
             val key = match.groups[2]!!.value
 
             val idx = when (val type = match.groups[1]?.value) {
@@ -133,7 +125,7 @@ object Templating {
                         { content, i ->
                             val (separator, idx) = if (i + 1 < format.length && format[i + 1] == ENTER)
                                 format.countEnterExit(ENTER, EXIT,
-                                    { separator, i2 -> separator to i2+1 },
+                                    { separator, i2 -> separator to i2 },
                                     { _, _ -> "" to i }, // if we don't terminate separator properly, it's just more content
                                     i + 2
                                 )
@@ -144,6 +136,9 @@ object Templating {
                         },
                         { _, idx ->
                             // Lenient method (here): just parse the remainder
+                            //   Note that we can't use `match.range.first` here,
+                            //   since that would lead to it trying to reparse this symbol,
+                            //   causing a stack overflow
                             // Strict method: throw an unbalanced brackets exception
                             idx
                         },

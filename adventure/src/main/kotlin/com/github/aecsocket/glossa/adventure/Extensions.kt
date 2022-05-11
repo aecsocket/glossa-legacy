@@ -20,4 +20,4 @@ operator fun <B : ComponentBuilder<*, B>> B.plus(component: Component): B = appe
 operator fun <B : ComponentBuilder<*, B>> B.plus(builder: ComponentBuilder<*, *>): B = append(builder)
 
 /** @see [Component.join] */
-fun Iterable<ComponentLike>.join(config: JoinConfiguration = JoinConfiguration.newlines()) = Component.join(config, this)
+fun Iterable<ComponentLike>.join(config: JoinConfiguration = JoinConfiguration.noSeparators()) = Component.join(config, this)

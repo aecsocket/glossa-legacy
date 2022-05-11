@@ -22,6 +22,8 @@ const val SINGLE_LINE = "single_line"
 const val MULTI_LINE = "multi_line"
 const val TEMPLATED = "templated"
 const val SEPARATED = "separated"
+const val SUBSTITUTED = "substituted"
+const val SUBSTITUTED_SEPARATED = "substituted_separated"
 
 class StylingI18NTest {
     private fun i18n() = StylingI18N(Locale.US).apply {
@@ -32,7 +34,9 @@ class StylingI18NTest {
                 Line two
             """.trimIndent(),
             TEMPLATED to "Template: >{value}<",
-            SEPARATED to "Authors: @author[{_}][, ]")
+            SEPARATED to "Authors: @<author>[{_}][, ]",
+            SUBSTITUTED to "Substituted: >@$<subst><",
+            SUBSTITUTED_SEPARATED to "Substituted: >@$<subst>[, ]<")
 
         styles[INFO] = style(WHITE)
         styles[VAR] = style(YELLOW)
@@ -80,11 +84,44 @@ class StylingI18NTest {
                 text("AuthorOne", YELLOW) +
                 text(", ", GRAY) +
                 text("AuthorTwo", YELLOW)
-        ), i18n[SEPARATED, Args(
-            "author" to {MultiArgs(
-                {"AuthorOne"},
-                {"AuthorTwo"}
+        ), i18n[SEPARATED, argMap(
+            "author" argList {listOf(
+                arg("AuthorOne"),
+                arg("AuthorTwo")
             )}
+        )])
+    }
+
+    @Test
+    fun testSubstitution() {
+        val i18n = i18n()
+
+        equalComponents(listOf(
+            text("") +
+                text("Substituted: >") +
+                text("Component") +
+                text("<")
+        ), i18n[SUBSTITUTED, argMap(
+            "subst" argSub {listOf(text("Component"))}
+        )])
+        equalComponents(listOf(
+            text("") +
+                    text("Substituted: >") +
+                    text("Styled component", RED) +
+                    text("<")
+        ), i18n[SUBSTITUTED, argMap(
+            "subst" argSub {listOf(text("Styled component", RED))}
+        )])
+
+        equalComponents(listOf(
+            text("") +
+                    text("Substituted: >") +
+                    text("Red", RED) +
+                    text(", ") +
+                    text("Blue", BLUE) +
+                    text("<")
+        ), i18n[SUBSTITUTED_SEPARATED, argMap(
+            "subst" argSub {listOf(text("Red", RED), text("Blue", BLUE))}
         )])
     }
 
@@ -100,11 +137,12 @@ class StylingI18NTest {
               "Line two"
             ]
             "message.templated": [
-              "Entry: @one[one = {value}]"
-              "Entry: @two[two = {value}]"
+              "Entry: @<one>[one = {value}]"
+              "Entry: @<two>[two = {value}]"
             ]
-            "message.authors": "Authors: @author[{_}][, ]"
-            """.trimIndent())) }
+            "message.authors": "Authors: @<author>[{_}][, ]"
+            """.trimIndent())
+            ) }
             .build())
 
         i18n.loadStyling(HoconConfigurationLoader.builder()
@@ -137,12 +175,12 @@ class StylingI18NTest {
             text("", WHITE) +
                 text("Entry: ") +
                 text("two = 2", YELLOW)
-        ), i18n["message.templated", Args(
-            "one" to {Args(
-                "value" to {1}
+        ), i18n["message.templated", argMap(
+            "one" argMap {mapOf(
+                "value" arg {1}
             )},
-            "two" to {Args(
-                "value" to {2}
+            "two" argMap {mapOf(
+                "value" arg {2}
             )}
         )])
 
@@ -152,10 +190,10 @@ class StylingI18NTest {
                 text("AuthorOne", YELLOW) +
                 text(", ", GRAY) +
                 text("AuthorTwo", YELLOW)
-        ), i18n["message.authors", Args(
-            "author" to {MultiArgs(
-                {"AuthorOne"},
-                {"AuthorTwo"}
+        ), i18n["message.authors", argMap(
+            "author" argList {listOf(
+                arg("AuthorOne"),
+                arg("AuthorTwo")
             )}
         )])
     }

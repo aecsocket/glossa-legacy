@@ -45,20 +45,17 @@ class StylingI18N(
     val styles = HashMap<String, Style>()
     val formats = HashMap<String, StylingFormat>()
 
-    override fun get(locale: Locale, key: String, args: Args) = format(locale, key, args)?.let { lines ->
+    override fun get(locale: Locale, key: String, args: ArgumentMap<Component>) = format(locale, key, args)?.let { lines ->
         val format = formats[key] ?: StylingFormat.IDENTITY
         val defaultStyle = format.default?.let { styles[it] }
         lines.map { line ->
-            fun component(token: Templating.FormatToken) =
-                text(token.value).defaultStyle(styles[format.args[token.path()]])
+            val res = line.map { when (it) {
+                is StringToken<Component> -> text(it.value)
+                is RawToken<Component> -> it.value
+            }.defaultStyle(styles[format.args[it.path()]]) }
 
-            if (line.size == 1) {
-                component(line[0])
-            } else {
-                val res = text()
-                line.forEach { res.append(component(it)) }
-                res.build().defaultStyle(defaultStyle)
-            }
+            (if (res.size == 1) res[0] else res.join())
+                .defaultStyle(defaultStyle)
         }
     }
 }

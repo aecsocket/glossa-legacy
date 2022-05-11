@@ -1,9 +1,5 @@
 package com.github.aecsocket.glossa.core
 
-import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.arg
-import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.argList
-import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.argSub
-import com.github.aecsocket.glossa.core.TemplatingI18N.Companion.args
 import org.junit.jupiter.api.Test
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import java.io.BufferedReader
@@ -21,6 +17,9 @@ const val SCOPED_THIS = "scoped_this"
 const val SEPARATED = "separated"
 const val SEPARATORS_THIS = "separators_this"
 const val NESTED_SCOPE = "nested_scope"
+const val SUBSTITUTED = "substituted"
+const val SUBSTITUTED_SEPARATED = "substituted_separated"
+const val LOCALIZABLE = "localizable"
 
 class StringI18NTest {
     private fun i18n() = StringI18N(Locale.US).apply {
@@ -41,15 +40,18 @@ class StringI18NTest {
                   other {You have # items.}
                 }
             """.trimIndent(),
-            SCOPED to "Scoped: >@scope[{value}]<",
-            SCOPED_THIS to "Scoped this: >@value[{_}]<",
-            SEPARATED to "Authors: @author[{name}][, ]",
-            SEPARATORS_THIS to "Authors: @author[{_}][, ]",
+            SCOPED to "Scoped: >@<scope>[{value}]<",
+            SCOPED_THIS to "Scoped this: >@<value>[{_}]<",
+            SEPARATED to "Authors: @<author>[{name}][, ]",
+            SEPARATORS_THIS to "Authors: @<author>[{_}][, ]",
             NESTED_SCOPE to """
-                Purchases: @purchase[
-                  {total, plural, one {# purchase} other {# purchases}}: @entry[
+                Purchases: @<purchase>[
+                  {total, plural, one {# purchase} other {# purchases}}: @<entry>[
                     - "{name}" x{amount}]]
-            """.trimIndent())
+            """.trimIndent(),
+            SUBSTITUTED to "Substituted: >@$<subst><",
+            SUBSTITUTED_SEPARATED to "Substituted: >@$<subst>[, ]<",
+            LOCALIZABLE to "Localizable ({value})")
         register(Locale.UK,
             SINGLE_LINE to "[UK] Single line",
             MULTI_LINE to """
@@ -96,41 +98,17 @@ class StringI18NTest {
     }
 
     @Test
-    fun test() {
-        val i18n = StringI18N(Locale.US)
-        i18n.register(Locale.US,
-            "test" to """
-                Test {value} subst @$<subst>[, ]
-                Details: @<details>[
-                  Number: {num, number}]
-                Lines: @<line>[
-                  <@$<line>>]
-            """.trimIndent())
-        i18n["test", args(
-            "value" arg 5,
-            "subst" argSub {listOf("one", "two")},
-            "details" args {mapOf(
-                "num" arg 12_345.6
-            )},
-            "line" argList {listOf(
-                args("line" argSub {listOf("A")}),
-                args("line" argSub {listOf("B")}),
-            )}
-        )]?.forEach { println("<$it>") }
-    }
-
-    /*@Test
     fun testTemplated() {
         val i18n = i18n()
         assertEquals(listOf(
             "Template: >Template value<"
-        ), i18n[TEMPLATED, Args(
-            "value" to { "Template value" }
+        ), i18n[TEMPLATED, argMap(
+            "value" arg {"Template value"}
         )])
         assertEquals(listOf(
             "[UK] Template: >Template value<"
-        ), i18n[Locale.UK, TEMPLATED, Args(
-            "value" to { "Template value" }
+        ), i18n[Locale.UK, TEMPLATED, argMap(
+            "value" arg {"Template value"}
         )])
     }
 
@@ -138,13 +116,13 @@ class StringI18NTest {
     fun testLocaleTemplated() {
         val i18n = i18n()
         val date = Date(0)
-        val args = Args(
-            "num" to { 1_234.5 },
-            "prc" to { 0.2 },
-            "date" to { date }
+        val args = argMap<String>(
+            "num" arg {1_234.5},
+            "prc" arg {0.2},
+            "date" arg {date}
         )
 
-        val pluralZero = args + ("items" to { 0 })
+        val pluralZero = args + ("items" arg {0})
         assertEquals(listOf(
             "Number: 1,234.5",
             "Percent: 20%",
@@ -160,7 +138,7 @@ class StringI18NTest {
             "Plural: You have 0 items."
         ), i18n[Locale.GERMAN, LOCALE_TEMPLATED, pluralZero])
 
-        val pluralOne = args + ("items" to { 1 })
+        val pluralOne = args + ("items" arg {1})
         assertEquals(listOf(
             "Number: 1,234.5",
             "Percent: 20%",
@@ -184,9 +162,9 @@ class StringI18NTest {
         var flag = false
         assertEquals(listOf(
             "Scoped: >Value with side effect<"
-        ), i18n[SCOPED, Args(
-            "scope" to { Args(
-                "value" to {
+        ), i18n[SCOPED, argMap(
+            "scope" argMap {mapOf(
+                "value" arg {
                     flag = true
                     "Value with side effect"
                 }
@@ -197,9 +175,9 @@ class StringI18NTest {
         flag = false
         assertEquals(listOf(
             "Single line"
-        ), i18n[SINGLE_LINE, Args(
-            "scope" to { Args(
-                "value" to {
+        ), i18n[SINGLE_LINE, argMap(
+            "scope" argMap {mapOf(
+                "value" arg {
                     flag = true
                     "Value with side effect"
                 }
@@ -209,8 +187,8 @@ class StringI18NTest {
 
         assertEquals(listOf(
             "Scoped this: >This value<"
-        ), i18n[SCOPED_THIS, Args(
-            "value" to { "This value" }
+        ), i18n[SCOPED_THIS, argMap(
+            "value" arg {"This value"}
         )])
     }
 
@@ -220,23 +198,21 @@ class StringI18NTest {
 
         assertEquals(listOf(
             "Authors: AuthorOne, AuthorTwo, AuthorThree"
-        ), i18n[SEPARATED, Args(
-            "author" to { MultiArgs({ Args(
-                "name" to { "AuthorOne" }
-            ) }, { Args(
-                "name" to { "AuthorTwo" }
-            ) }, { Args(
-                "name" to { "AuthorThree" }
-            ) }) }
+        ), i18n[SEPARATED, argMap(
+            "author" argList {listOf(
+                argMap("name" arg {"AuthorOne"}),
+                argMap("name" arg {"AuthorTwo"}),
+                argMap("name" arg {"AuthorThree"})
+            )}
         )])
 
         assertEquals(listOf(
             "Authors: AuthorOne, AuthorTwo, AuthorThree"
-        ), i18n[SEPARATORS_THIS, Args(
-            "author" to { MultiArgs(
-                { "AuthorOne" },
-                { "AuthorTwo" },
-                { "AuthorThree" }
+        ), i18n[SEPARATORS_THIS, argMap(
+            "author" argList {listOf(
+                arg("AuthorOne"),
+                arg("AuthorTwo"),
+                arg("AuthorThree")
             ) }
         )])
     }
@@ -252,23 +228,58 @@ class StringI18NTest {
             "    - \"Item two\" x2",
             "  1 purchase: ",
             "    - \"Item\" x1"
-        ), i18n[NESTED_SCOPE, Args(
-            "purchase" to { MultiArgs({ Args(
-                "total" to { 5 },
-                "entry" to { MultiArgs({ Args(
-                    "name" to { "Item one" },
-                    "amount" to { 3 }
-                ) }, { Args(
-                    "name" to { "Item two" },
-                    "amount" to { 2 }
-                ) }) }
-            ) }, { Args(
-                "total" to { 1 },
-                "entry" to { MultiArgs({ Args(
-                    "name" to { "Item" },
-                    "amount" to { 1 }
-                ) }) }
-            ) }) }
+        ), i18n[NESTED_SCOPE, argMap(
+            "purchase" argList {listOf(argMap(
+                "total" arg {5},
+                "entry" argList {listOf(argMap(
+                    "name" arg {"Item one"},
+                    "amount" arg {3}
+                ), argMap(
+                    "name" arg {"Item two"},
+                    "amount" arg {2}
+                ))}
+            ), argMap(
+                "total" arg {1},
+                "entry" argList {listOf(argMap(
+                    "name" arg {"Item"},
+                    "amount" arg {1}
+                ))}
+            ))}
+        )])
+    }
+
+    @Test
+    fun testSubstitution() {
+        val i18n = i18n()
+        assertEquals(listOf(
+            "Substituted: >Hello world<",
+        ), i18n[SUBSTITUTED, argMap(
+            "subst" argSub {listOf("Hello world")}
+        )])
+
+        assertEquals(listOf(
+            "Substituted: >HelloWorld<", // if no separator defined, should be empty
+        ), i18n[SUBSTITUTED, argMap(
+            "subst" argSub {listOf("Hello", "World")}
+        )])
+
+        assertEquals(listOf(
+            "Substituted: >Hello, World<",
+        ), i18n[SUBSTITUTED_SEPARATED, argMap(
+            "subst" argSub {listOf("Hello", "World")}
+        )])
+
+        data class OurLocalizable(val value: Int) : Localizable<String> {
+            override fun localize(i18n: TemplatingI18N<String>, locale: Locale) =
+                i18n.safe(locale, LOCALIZABLE, argMap(
+                    "value" arg {value}
+                ))
+        }
+
+        assertEquals(listOf(
+            "Substituted: >Localizable (5)<"
+        ), i18n[SUBSTITUTED, argMap(
+            "subst" argTl {OurLocalizable(5)}
         )])
     }
 
@@ -294,11 +305,4 @@ class StringI18NTest {
             "Line two"
         ), i18n["message.multi_line"])
     }
-
-    @Test
-    fun test() {
-        val i18n = StringI18N(Locale.US)
-
-        i18n["message", ]
-    }*/
 }

@@ -32,7 +32,7 @@ class TemplatingTest {
                 )),
                 TextNode(" Post")
             )),
-            Templating.parse("Pre @label[Scope content] Post")
+            Templating.parse("Pre @<label>[Scope content] Post")
         )
 
         assertEquals(
@@ -46,15 +46,21 @@ class TemplatingTest {
                 )),
                 TextNode(" Post")
             )),
-            Templating.parse("Pre @one[Scope one @two[Scope two]] Post")
+            Templating.parse("Pre @<one>[Scope one @<two>[Scope two]] Post")
         )
+    }
 
-        Templating.parse("Pre @one[Scope one @two[Mismatched brackets]")
-            .renderTree().forEach { println(it) }
-
+    @Test
+    fun testMismatchedScope() {
         assertEquals(
-            TextNode("Pre @one[Scope one @two[Mismatched brackets]"),
-            Templating.parse("Pre @one[Scope one @two[Mismatched brackets]")
+            RootNode(listOf(
+                TextNode("Pre "),
+                TextNode("Scope one "),
+                ScopeNode("two", "", listOf(
+                    TextNode("Mismatched brackets")
+                ))
+            )),
+            Templating.parse("Pre @<one>[Scope one @<two>[Mismatched brackets]")
         )
     }
 }
