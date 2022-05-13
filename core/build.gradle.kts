@@ -8,4 +8,5 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation(libs.bundles.adventure)
+    testImplementation(libs.configurateHocon)
 }

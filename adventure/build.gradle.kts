@@ -8,6 +8,7 @@ dependencies {
     compileOnly(libs.bundles.adventure)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.configurateHocon)
     testImplementation(libs.bundles.adventure)
     testImplementation(libs.adventureTextSerializerGson)
 }

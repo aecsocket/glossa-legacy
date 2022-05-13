@@ -15,8 +15,9 @@ jupiterApi = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.
 jupiterEngine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit" }
 
 icu4j = { group = "com.ibm.icu", name = "icu4j", version.ref = "icu4j" }
-configurateHocon = { group = "org.spongepowered", name = "configurate-hocon", version.ref = "configurate" }
+configurateCore = { group = "org.spongepowered", name = "configurate-core", version.ref = "configurate" }
 configurateExtraKotlin = { group = "org.spongepowered", name = "configurate-extra-kotlin", version.ref = "configurate" }
+configurateHocon = { group = "org.spongepowered", name = "configurate-hocon", version.ref = "configurate" }
 
 adventureApi = { group = "net.kyori", name = "adventure-api", version.ref = "adventure" }
 adventureSerializerConfigurate = { group = "net.kyori", name = "adventure-serializer-configurate4", version.ref = "adventure" }
@@ -25,7 +26,7 @@ adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-seri
 
 [bundles]
 
-configurate = [ "configurateHocon", "configurateExtraKotlin" ]
+configurate = [ "configurateCore", "configurateExtraKotlin" ]
 junit = [ "jupiterApi", "jupiterEngine" ]
 
 adventure = [ "adventureApi", "adventureTextMiniMessage", "adventureSerializerConfigurate" ]
