@@ -2,7 +2,7 @@
 
 # [Glossa](https://aecsocket.github.io/glossa)
 
-![version](https://img.shields.io/github/downloads/aecsocket/glossa/latest/total?sort=semver)
+![version](https://img.shields.io/github/v/release/aecsocket/glossa?sort=semver)
 [![build](https://github.com/aecsocket/glossa/actions/workflows/build.yml/badge.svg)](https://github.com/aecsocket/glossa/actions/workflows/build.yml)
 
 </div>
