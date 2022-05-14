@@ -41,15 +41,15 @@ class StylingI18NTest {
             SUBSTITUTED_SEPARATED to "Substituted: >@$<subst>[, ]<",
             MINIMESSAGE to "Jump key: <key:key.jump>, <red>red</red>, nested: @<scope>[<blue>content]")
 
-        styles[INFO] = style(WHITE)
-        styles[VAR] = style(YELLOW)
-        styles[EXTRA] = style(GRAY)
+        registerStyle(INFO, style(WHITE))
+        registerStyle(VAR, style(YELLOW))
+        registerStyle(EXTRA, style(GRAY))
 
-        formats[TEMPLATED] = StylingFormat(INFO,
-            "value" to VAR)
-        formats[SEPARATED] = StylingFormat(INFO,
+        registerFormat(TEMPLATED, StylingFormat(INFO,
+            "value" to VAR))
+        registerFormat(SEPARATED, StylingFormat(INFO,
             "author" to VAR,
-            "author.$SEPARATOR" to EXTRA)
+            "author.$SEPARATOR" to EXTRA))
     }
 
     private fun equalComponents(expected: List<Component>?, actual: List<Component>?) {

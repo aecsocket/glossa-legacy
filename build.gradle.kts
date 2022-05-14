@@ -6,7 +6,7 @@ plugins {
 
 allprojects {
     group = "com.github.aecsocket"
-    version = "0.2.2-SNAPSHOT"
+    version = "0.2.3-SNAPSHOT"
     description = "ICU-based localization library"
 }
 
@@ -14,12 +14,6 @@ subprojects {
     apply<JavaLibraryPlugin>()
     plugins.apply("org.jetbrains.dokka")
     plugins.apply("maven-publish")
-
-    java {
-        toolchain.languageVersion.set(JavaLanguageVersion.of(17))
-        withSourcesJar()
-        withJavadocJar()
-    }
 
     publishing {
         publications {
@@ -30,10 +24,6 @@ subprojects {
     }
 
     tasks {
-        compileJava {
-            options.encoding = Charsets.UTF_8.name()
-        }
-
         test {
             useJUnitPlatform()
         }
