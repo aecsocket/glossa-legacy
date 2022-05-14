@@ -1,10 +1,8 @@
 <div align="center">
 
-<!--<a href="https://aecsocket.github.io/glossa"><img src="banner.png" width="1024" alt="Glossa banner" /></a>-->
-
 # [Glossa](https://aecsocket.github.io/glossa)
 
-`0.2.1-SNAPSHOT`:
+![version](https://img.shields.io/github/downloads/aecsocket/glossa/latest/total?sort=semver)
 [![build](https://github.com/aecsocket/glossa/actions/workflows/build.yml/badge.svg)](https://github.com/aecsocket/glossa/actions/workflows/build.yml)
 
 </div>
