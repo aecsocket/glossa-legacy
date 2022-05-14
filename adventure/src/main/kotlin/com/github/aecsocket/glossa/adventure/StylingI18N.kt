@@ -55,8 +55,19 @@ class StylingI18N(
     locale: Locale = Locale.ROOT,
     val miniMessage: MiniMessage = MiniMessage.miniMessage()
 ) : AdventureI18N(locale) {
-    val styles = HashMap<String, Style>()
-    val formats = HashMap<String, StylingFormat>()
+    private val styles = HashMap<String, Style>()
+    private val formats = HashMap<String, StylingFormat>()
+
+    fun styles() = styles.toMap()
+    fun formats() = formats.toMap()
+
+    fun registerStyle(key: String, style: Style) {
+        styles[key] = style
+    }
+
+    fun registerFormat(key: String, format: StylingFormat) {
+        formats[key] = format
+    }
 
     override fun get(locale: Locale, key: String, args: ArgumentMap<Component>) = format(locale, key, args)?.let { lines ->
         val format = formats[key] ?: StylingFormat.IDENTITY
@@ -80,6 +91,12 @@ class StylingI18N(
                 component.build().defaultStyle(defaultStyle)
             }
         }
+    }
+
+    override fun clear() {
+        super.clear()
+        styles.clear()
+        formats.clear()
     }
 }
 
@@ -115,9 +132,9 @@ private const val FORMATS = "formats"
 fun StylingI18N.loadStyling(loader: ConfigurationLoader<*>) {
     val node = loader.load(CONFIG_OPTIONS)
     for ((key, child) in node.node(STYLES).childrenMap()) {
-         child.get(Style::class)?.let { styles[key.toString()] = it }
+         child.get(Style::class)?.let { registerStyle(key.toString(), it) }
     }
     for ((key, child) in node.node(FORMATS).childrenMap()) {
-        child.get(StylingFormat::class)?.let { formats[key.toString()] = it }
+        child.get(StylingFormat::class)?.let { registerFormat(key.toString(), it) }
     }
 }

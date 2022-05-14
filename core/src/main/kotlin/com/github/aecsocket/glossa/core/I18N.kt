@@ -80,12 +80,16 @@ abstract class AbstractI18N<T, A>(
 ) : MutableI18N<T, A> {
     private val translations = HashMap<Locale, Translation>()
 
+    fun translations() = translations.toMap()
+
     override fun register(tl: Translation) {
-        translations[tl.locale]?.putAll(tl) ?: run { translations[tl.locale] = tl.copy() }
+        translations[tl.locale] = translations[tl.locale]?.let {
+            Translation(it.locale, it.entries + tl.entries)
+        } ?: tl.copy()
     }
 
     protected fun translation(locale: Locale, key: String) =
-        translations[locale]?.get(key) ?: translations[this.locale]?.get(key)
+        translations[locale]?.entries?.get(key) ?: translations[this.locale]?.entries?.get(key)
 
     override fun clear() {
         translations.clear()

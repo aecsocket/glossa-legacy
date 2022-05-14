@@ -11,16 +11,14 @@ import kotlin.collections.HashMap
  * is effective for.
  *
  * @property locale Locale this translation is for.
- * @param m Underlying map.
+ * @param entries Entries in this map.
  */
-class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<String, String>(m) {
-    constructor(locale: Locale) : this(locale, emptyMap())
-
+class Translation(val locale: Locale, val entries: Map<out String, String> = emptyMap()) {
     /**
      * Deeply copies this translation.
      * @return Copy.
      */
-    fun copy() = Translation(locale, this)
+    fun copy() = Translation(locale, entries.toMap())
 
     /**
      * Singleton Configurate serializer for this type.
@@ -32,7 +30,7 @@ class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<Stri
         override fun serialize(type: Type, obj: Translation?, node: ConfigurationNode) {
             if (obj == null) node.set(null)
             else {
-                for ((key, value) in obj) {
+                for ((key, value) in obj.entries) {
                     val lines = value.split('\n')
                     if (lines.size == 1) {
                         node.node(key).set(value)
