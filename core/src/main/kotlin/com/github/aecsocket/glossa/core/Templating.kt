@@ -9,14 +9,14 @@ import kotlin.collections.ArrayList
 sealed interface TemplateNode {
     /**
      * Gets the value of this node in a rendered tree.
-     * @return the lines of the value.
+     * @return Lines of the value.
      */
     fun treeValue(): List<String>
 }
 
 /**
  * Renders out this node using [Trees.render].
- * @return the lines of the render.
+ * @return Lines of the render.
  */
 fun TemplateNode.renderTree(): List<String> = if (this is ContainerNode) Trees.render(children,
     { it.treeValue() },
@@ -24,7 +24,7 @@ fun TemplateNode.renderTree(): List<String> = if (this is ContainerNode) Trees.r
 
 /**
  * A node holding raw text.
- * @property value the text.
+ * @property value Text.
  */
 data class TextNode(
     val value: String
@@ -36,7 +36,7 @@ data class TextNode(
 
 /**
  * A node defining a substitution.
- * @property key the label of the substitution.
+ * @property key Label of the substitution.
  */
 data class SubstitutionNode(
     val key: String,
@@ -48,16 +48,16 @@ data class SubstitutionNode(
 }
 
 /**
- *
- * @property children the children of this node.
+ * A node which holds children nodes.
+ * @property children Children of this node.
  */
 sealed interface ContainerNode : TemplateNode {
     val children: List<TemplateNode>
 
     /**
      * Appends another node to this node's children.
-     * @param node the child to add.
-     * @return the resulting node.
+     * @param node Child to add.
+     * @return Resulting node.
      */
     operator fun plus(node: TemplateNode): TemplateNode
 }
@@ -72,8 +72,8 @@ data class RootNode(
 
 /**
  * A node defining a scope block enter.
- * @property key the key of the argument of this scope.
- * @property separator the text of the child separator.
+ * @property key Key of the argument of this scope.
+ * @property separator Text of the child separator.
  */
 data class ScopeNode(
     val key: String,
@@ -199,9 +199,9 @@ object Templating {
      *             ├─ @$<item> [, ]
      *             └─ <" x{amount}>
      *
-     * @param format the string format.
-     * @param startIndex the index in the string from which to start.
-     * @return the resulting node.
+     * @param format String format.
+     * @param startIndex Index in the string from which to start.
+     * @return Resulting node.
      */
     fun parse(format: String, startIndex: Int = 0): TemplateNode {
         val res = parseChildren(format, startIndex)

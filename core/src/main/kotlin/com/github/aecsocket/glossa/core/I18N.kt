@@ -10,10 +10,9 @@ import java.util.Locale
  *
  * Arguments are provided as [A] instances.
  *
- * @param T the generated object type.
- * @param A the arguments type.
- * @property locale the default locale to use, when none is specified,
- * or when a key is not found for a locale.
+ * @param T Generated object type.
+ * @param A Arguments type.
+ * @property locale Default locale to use, when none is specified, or when a key is not found for a locale.
  */
 interface I18N<T, A> {
     var locale: Locale
@@ -24,10 +23,10 @@ interface I18N<T, A> {
      * Returns `null` if the key was not found in the translation or fallback
      * locale's translation.
      *
-     * @param locale the locale to generate with.
-     * @param key the localization key.
-     * @param args the localization arguments.
-     * @return the translation.
+     * @param locale Locale to generate with.
+     * @param key Localization key.
+     * @param args Localization arguments.
+     * @return Translation.
      */
     operator fun get(locale: Locale, key: String, args: A): T?
 
@@ -37,9 +36,9 @@ interface I18N<T, A> {
      *
      * Returns `null` if the key was not found in the translation.
      *
-     * @param key the localization key.
-     * @param args the localization arguments.
-     * @return the translation.
+     * @param key Localization key.
+     * @param args Localization arguments.
+     * @return Translation.
      */
     operator fun get(key: String, args: A) =
         get(locale, key, args)
@@ -50,10 +49,10 @@ interface I18N<T, A> {
      *
      * If the key was not found, generates a default [T] based on the implementation.
      *
-     * @param locale the locale to generate with.
-     * @param key the localization key.
-     * @param args the localization arguments.
-     * @return the translation.
+     * @param locale Locale to generate with.
+     * @param key Localization key.
+     * @param args Localization arguments.
+     * @return Translation.
      */
     fun safe(locale: Locale, key: String, args: A): T
 
@@ -63,9 +62,9 @@ interface I18N<T, A> {
      *
      * If the key was not found, generates a default [T] based on the implementation.
      *
-     * @param key the localization key.
-     * @param args the localization arguments.
-     * @return the translation.
+     * @param key Localization key.
+     * @param args Localization arguments.
+     * @return Translation.
      */
     fun safe(key: String, args: A) =
         safe(locale, key, args)
@@ -95,8 +94,8 @@ abstract class AbstractI18N<T, A>(
 
 /**
  * Formats a map of objects.
- * @param args The map of objects.
- * @return the formatted string.
+ * @param args Map of objects.
+ * @return Formatted string.
  */
 fun MessageFormat.asString(args: Map<String, Any?>): String = StringBuffer().apply {
     this@asString.format(args, this, FieldPosition(0))

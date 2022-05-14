@@ -10,15 +10,15 @@ import kotlin.collections.HashMap
  * A string key-value map, additionally storing what locale this translation
  * is effective for.
  *
- * @property locale the locale this translation is for.
- * @param m the underlying map.
+ * @property locale Locale this translation is for.
+ * @param m Underlying map.
  */
 class Translation(val locale: Locale, m: Map<out String, String>) : HashMap<String, String>(m) {
     constructor(locale: Locale) : this(locale, emptyMap())
 
     /**
      * Deeply copies this translation.
-     * @return the copy.
+     * @return Copy.
      */
     fun copy() = Translation(locale, this)
 

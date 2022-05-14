@@ -12,22 +12,22 @@ const val FORMAT_TOKEN_SEPARATOR = "."
 
 /**
  * A token generated from parsing a node.
- * @param E the element type of the translation target.
- * @property path the path from the root to this node.
+ * @param E Element type of the translation target.
+ * @property path Path from the root to this node.
  */
 sealed interface FormatToken<E> {
     val path: List<String>
 
     /**
      * Joins the path using [FORMAT_TOKEN_SEPARATOR].
-     * @return the joined path.
+     * @return Joined path.
      */
     fun path() = path.joinToString(FORMAT_TOKEN_SEPARATOR)
 }
 
 /**
  * A token storing a string value.
- * @param value the string value.
+ * @param value String value.
  */
 data class StringToken<E>(
     val value: String,
@@ -36,7 +36,7 @@ data class StringToken<E>(
 
 /**
  * A token storing a value of the translation target type.
- * @param value the translation target value.
+ * @param value Translation target value.
  */
 data class RawToken<E>(
     val value: E,
@@ -62,10 +62,10 @@ abstract class TemplatingI18N<E>(
 
     /**
      * Helper method to generate format tokens for a get operation.
-     * @param locale the locale.
-     * @param key the localization key.
-     * @param args the args.
-     * @return the lines of format tokens.
+     * @param locale Locale.
+     * @param key Localization key.
+     * @param args Arguments.
+     * @return Lines of format tokens.
      */
     protected fun format(locale: Locale, key: String, args: ArgumentMap<E>): List<List<FormatToken<E>>>? {
         return cache.computeIfAbsent(locale) { HashMap() }.computeIfAbsent(key) {
@@ -82,9 +82,9 @@ abstract class TemplatingI18N<E>(
      * Returns `null` if the key was not found in the translation or fallback
      * locale's translation.
      *
-     * @param locale the locale to generate with.
-     * @param key the localization key.
-     * @return the translation.
+     * @param locale Locale to generate with.
+     * @param key Localization key.
+     * @return Translation.
      */
     operator fun get(locale: Locale, key: String) = get(locale, key, Argument.empty())
 
@@ -96,8 +96,8 @@ abstract class TemplatingI18N<E>(
      * Returns `null` if the key was not found in the translation or fallback
      * locale's translation.
      *
-     * @param key the localization key.
-     * @return the translation.
+     * @param key Localization key.
+     * @return Translation.
      */
     operator fun get(key: String) = get(key, Argument.empty())
 
@@ -107,9 +107,9 @@ abstract class TemplatingI18N<E>(
      *
      * If the key was not found, generates a default list of [E] based on the implementation.
      *
-     * @param locale the locale to generate with.
-     * @param key the localization key.
-     * @return the translation.
+     * @param locale Locale to generate with.
+     * @param key Localization key.
+     * @return Translation.
      */
     fun safe(locale: Locale, key: String) = safe(locale, key, Argument.empty())
 
@@ -120,8 +120,8 @@ abstract class TemplatingI18N<E>(
      *
      * If the key was not found, generates a default list of [E] based on the implementation.
      *
-     * @param key the localization key.
-     * @return the translation.
+     * @param key Localization key.
+     * @return Translation.
      */
     fun safe(key: String) = safe(key, Argument.empty())
 
@@ -173,11 +173,11 @@ abstract class TemplatingI18N<E>(
      *       1 purchase:
      *         - Some Item x1
      *
-     * @param locale the locale to generate for, used in [MessageFormat.format].
-     * @param node the node to generate with.
-     * @param args the arguments.
-     * @param path the current depth of the node.
-     * @return the lines of tokens.
+     * @param locale Locale to generate for, used in [MessageFormat.format].
+     * @param node Node to generate with.
+     * @param args Arguments.
+     * @param path Current depth of the node.
+     * @return Lines of tokens.
      */
     private fun format(
         locale: Locale,
@@ -270,13 +270,13 @@ abstract class TemplatingI18N<E>(
 
     /**
      * A value which can be replaced in a format string.
-     * @param E the element type of the translation target.
+     * @param E Element type of the translation target.
      */
     sealed interface Argument<E> {
         /**
          * The mutable state of an argument, currently being used for localization.
-         * @param E the element type of the translation target.
-         * @property arg the backing argument.
+         * @param E Element type of the translation target.
+         * @property arg Backing argument.
          */
         interface State<E> {
             val arg: Argument<E>
@@ -289,14 +289,14 @@ abstract class TemplatingI18N<E>(
 
         /**
          * Creates a blank state object from this argument.
-         * @return the state.
+         * @return State.
          */
         fun createState(): State<E>
 
         companion object {
             /**
              * Creates an argument with no function.
-             * @return the argument.
+             * @return Argument.
              */
             @JvmStatic fun <E> empty() = argMap<E>()
         }
@@ -306,7 +306,7 @@ abstract class TemplatingI18N<E>(
      * An argument representing a raw value passed to ICU [MessageFormat].
      *
      * Creates [Argument.NoState] state.
-     * @property value the raw value.
+     * @property value Raw value.
      */
     data class RawArgument<E>(val value: Any) : Argument<E> {
         override fun createState() = Argument.NoState(this)
@@ -316,7 +316,7 @@ abstract class TemplatingI18N<E>(
      * An argument representing a value of type List<[E]>.
      *
      * Creates [Argument.NoState] state.
-     * @property value the list of [E]s.
+     * @property value List of [E]s.
      */
     data class SubstitutionArgument<E>(val value: List<E>) : Argument<E> {
         override fun createState() = Argument.NoState(this)
@@ -326,7 +326,7 @@ abstract class TemplatingI18N<E>(
      * An argument representing a [Localizable] object which can be converted to List<[E]>.
      *
      * Creates [LocalizedArgument.State] state.
-     * @property value the localizable.
+     * @property value Localizable.
      */
     data class LocalizedArgument<E>(val value: Localizable<E>) : Argument<E> {
         inner class State : Argument.State<E> {
@@ -346,7 +346,7 @@ abstract class TemplatingI18N<E>(
      * An argument representing a key-value map of strings to [Argument] creators.
      *
      * Creates [ArgumentMap.State] state.
-     * @property args the arguments.
+     * @property args Arguments.
      */
     data class ArgumentMap<E>(val args: Map<String, () -> Argument<E>>) : Argument<E> {
         inner class State(private val cache: MutableMap<String, Argument.State<E>?> = HashMap()) : Argument.State<E> {
@@ -375,7 +375,7 @@ abstract class TemplatingI18N<E>(
      * An argument representing a list of [Argument]s.
      *
      * Creates [ArgumentList.State] state.
-     * @property args the arguments.
+     * @property args Arguments.
      */
     data class ArgumentList<E>(val args: List<Argument<E>>) : Argument<E> {
         inner class State : Argument.State<E> {
@@ -404,9 +404,9 @@ abstract class TemplatingI18N<E>(
 interface Localizable<E> {
     /**
      * Generates the translated version of this object.
-     * @param i18n the I18N service used for translation.
-     * @param locale the locale used.
-     * @return the list of [E] translation targets.
+     * @param i18n I18N service used for translation.
+     * @param locale Locale used.
+     * @return List of [E] translation targets.
      */
     fun localize(i18n: TemplatingI18N<E>, locale: Locale): List<E>
 }

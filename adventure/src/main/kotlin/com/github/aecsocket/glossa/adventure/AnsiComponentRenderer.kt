@@ -19,33 +19,27 @@ private const val RESET = "0"
 interface ColorLevel {
     /**
      * Converts the provided RGB color into an escape string.
-     * @param rgb the RGB color.
-     * @return the escape sequence.
+     * @param rgb RGB color.
+     * @return Escape sequence.
      */
     fun escape(rgb: Int): String
 
     companion object {
-        /**
-         * TrueColor terminal level.
-         */
+        /** TrueColor terminal level. */
         @JvmStatic
         val TRUE_COLOR = object : ColorLevel {
             override fun escape(rgb: Int) =
                 "38;2;${rgb shr 16 and 0xff};${rgb shr 0 and 0xff};${rgb and 0xff}"
         }
 
-        /**
-         * Terminals with 256 colors.
-         */
+        /** Terminals with 256 colors. */
         @JvmStatic
         val INDEXED_256 = object : ColorLevel {
             // todo
             override fun escape(rgb: Int) = INDEXED_16.escape(rgb)
         }
 
-        /**
-         * Terminals with 16 colors.
-         */
+        /** Terminals with 16 colors. */
         @JvmStatic
         val INDEXED_16 = object : ColorLevel {
             override fun escape(rgb: Int) = when (rgb) {
@@ -80,7 +74,7 @@ interface ColorLevel {
 object AnsiComponentRenderer {
     /**
      * Gets the color level of the current environment.
-     * @return the color level.
+     * @return Color level.
      */
     fun colorLevel(): ColorLevel {
         System.getenv("COLORTERM")?.let {
@@ -94,8 +88,8 @@ object AnsiComponentRenderer {
 
     /**
      * Renders the passed component into a string with ANSI escape codes.
-     * @param input the component.
-     * @return the string.
+     * @param input Component.
+     * @return String.
      */
     fun render(input: Component): String {
         val result = StringBuilder()
@@ -144,8 +138,8 @@ object AnsiComponentRenderer {
 
     /**
      * Renders the passed component-like into a string with ANSI escape codes.
-     * @param input the component.
-     * @return the string.
+     * @param input Component.
+     * @return String.
      */
     fun render(like: ComponentLike) = render(like.asComponent())
 }

@@ -26,7 +26,8 @@ adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-seri
 
 [bundles]
 
-configurate = [ "configurateCore", "configurateExtraKotlin" ]
 junit = [ "jupiterApi", "jupiterEngine" ]
+
+configurate = [ "configurateCore", "configurateExtraKotlin" ]
 
 adventure = [ "adventureApi", "adventureTextMiniMessage", "adventureSerializerConfigurate" ]

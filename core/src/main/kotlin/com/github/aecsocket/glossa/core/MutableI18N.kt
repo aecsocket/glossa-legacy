@@ -16,14 +16,14 @@ import java.util.*
 interface MutableI18N<T, A> : I18N<T, A> {
     /**
      * Registers a translation.
-     * @param tl the translation.
+     * @param tl Translation.
      */
     fun register(tl: Translation)
 
     /**
      * Registers a translation.
-     * @param locale the translation locale.
-     * @param tl the translation pairs.
+     * @param locale Translation locale.
+     * @param tl Translation pairs.
      */
     fun register(locale: Locale, vararg tl: Pair<String, String>) =
         register(Translation(locale, tl.associate { it }))
@@ -52,7 +52,7 @@ private val CONFIG_OPTIONS = ConfigurationOptions.defaults()
  *   "Line two"
  * ]
  * ```
- * @param loader the loader.
+ * @param loader Loader.
  */
 @Throws(ConfigurateException::class)
 fun MutableI18N<*, *>.loadTranslations(loader: ConfigurationLoader<*>) {

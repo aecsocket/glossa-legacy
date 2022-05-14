@@ -21,8 +21,8 @@ const val DEFAULT = "__default__"
 
 /**
  * Defines style keys for parts of a message.
- * @property default the key of the default style applied.
- * @property args the key of styles applied to arguments.
+ * @property default Key of the default style applied.
+ * @property args Key of styles applied to arguments.
  */
 @ConfigSerializable
 data class StylingFormat(
@@ -109,7 +109,7 @@ private const val FORMATS = "formats"
  *   }
  * }
  * ```
- * @param loader the loader.
+ * @param loader Loader.
  */
 @Throws(ConfigurateException::class)
 fun StylingI18N.loadStyling(loader: ConfigurationLoader<*>) {

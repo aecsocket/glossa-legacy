@@ -7,6 +7,5 @@ dependencies {
     implementation(libs.bundles.configurate)
 
     testImplementation(kotlin("test"))
-    testImplementation(libs.bundles.adventure)
     testImplementation(libs.configurateHocon)
 }
