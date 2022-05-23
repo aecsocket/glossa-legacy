@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation(projects.glossaCore)
+    api(projects.glossaCore)
     implementation(libs.bundles.configurate)
     compileOnly(libs.bundles.adventure)
 

@@ -1,106 +1,215 @@
 package com.github.aecsocket.glossa.core
 
+import com.github.aecsocket.glossa.core.extension.build
 import com.ibm.icu.text.MessageFormat
-import java.text.FieldPosition
-import java.util.Locale
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
-/**
- * A service to localize a given key based on a locale,
- * generating a [T].
- *
- * Arguments are provided as [A] instances.
- *
- * @param T Generated object type.
- * @param A Arguments type.
- * @property locale Default locale to use, when none is specified, or when a key is not found for a locale.
- */
-interface I18N<T, A> {
+open class I18NException(message: String? = null, cause: Throwable? = null)
+    : RuntimeException(message, cause)
+
+const val THIS_ARG = "_"
+
+interface I18NContext<T> {
+    fun make(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit = {}): List<T>?
+
+    fun make(vararg key: String, args: Argument.MapScope<T>.() -> Unit = {}) = make(key.asIterable(), args)
+
+    fun safe(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit = {}): List<T>
+
+    fun safe(vararg key: String, args: Argument.MapScope<T>.() -> Unit = {}) = safe(key.asIterable(), args)
+}
+
+abstract class I18N<T>(
     var locale: Locale
+) : I18NContext<T> {
+    private val translations = HashMap<Locale, Translation.Root>()
+    private val cache = HashMap<Locale, MutableMap<List<String>, Template?>>()
 
-    /**
-     * Generates a [T] localization based on the locale, key and args passed.
-     *
-     * Returns `null` if the key was not found in the translation or fallback
-     * locale's translation.
-     *
-     * @param locale Locale to generate with.
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    operator fun get(locale: Locale, key: String, args: A): T?
+    abstract fun make(locale: Locale = this.locale, key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit = {}): List<T>?
 
-    /**
-     * Generates a [T] localization based on the key and args passed.
-     * Uses the fallback locale [locale].
-     *
-     * Returns `null` if the key was not found in the translation.
-     *
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    operator fun get(key: String, args: A) =
-        get(locale, key, args)
+    fun make(locale: Locale = this.locale, vararg key: String, args: Argument.MapScope<T>.() -> Unit = {}) =
+        make(locale, key.asIterable(), args)
+
+    override fun make(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit) = make(locale, key, args)
+
+    override fun make(vararg key: String, args: Argument.MapScope<T>.() -> Unit): List<T>? = make(locale, *key, args = args)
 
 
-    /**
-     * Generates a [T] localization based on the locale, key and args passed.
-     *
-     * If the key was not found, generates a default [T] based on the implementation.
-     *
-     * @param locale Locale to generate with.
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    fun safe(locale: Locale, key: String, args: A): T
+    abstract fun safe(locale: Locale = this.locale, key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit = {}): List<T>
 
-    /**
-     * Generates a [T] localization based on the key and args passed.
-     * Uses the fallback locale [locale].
-     *
-     * If the key was not found, generates a default [T] based on the implementation.
-     *
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    fun safe(key: String, args: A) =
-        safe(locale, key, args)
-}
+    fun safe(locale: Locale = this.locale, vararg key: String, args: Argument.MapScope<T>.() -> Unit = {}) =
+        safe(locale, key.asIterable(), args)
 
-/**
- * Partial implementation of an I18N service.
- *
- * Handles registration of translations.
- */
-abstract class AbstractI18N<T, A>(
-    override var locale: Locale = Locale.ROOT
-) : MutableI18N<T, A> {
-    private val translations = HashMap<Locale, Translation>()
+    override fun safe(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit) = safe(locale, key, args)
 
-    fun translations() = translations.toMap()
+    override fun safe(vararg key: String, args: Argument.MapScope<T>.() -> Unit) = safe(locale, *key, args = args)
 
-    override fun register(tl: Translation) {
+    fun contextOf(locale: Locale) = object : I18NContext<T> {
+        override fun make(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit) = make(locale, key, args)
+        override fun safe(key: Iterable<String>, args: Argument.MapScope<T>.() -> Unit) = safe(locale, key, args)
+    }
+
+    fun register(tl: Translation.Root) {
         translations[tl.locale] = translations[tl.locale]?.let {
-            Translation(it.locale, it.entries + tl.entries)
-        } ?: tl.copy()
+            it + tl
+        } ?: tl
     }
 
-    protected fun translation(locale: Locale, key: String) =
-        translations[locale]?.entries?.get(key) ?: translations[this.locale]?.entries?.get(key)
+    fun register(locale: Locale, content: Translation.Scope.() -> Unit) = register(Translation.buildRoot(locale, content))
 
-    override fun clear() {
+    open fun clear() {
         translations.clear()
+        cache.clear()
+    }
+
+    protected fun translation(locale: Locale, key: Iterable<String>) = translations[locale]?.get(key)
+        ?: if (locale != this.locale) translations[this.locale]?.get(key)
+        else if (locale != Locale.ROOT) translations[Locale.ROOT]?.get(key)
+        else null
+
+    protected fun template(locale: Locale, key: Iterable<String>) = cache
+        .computeIfAbsent(locale) { HashMap() }
+        .computeIfAbsent(key.toList()) { translation(locale, it)?.let { tl ->
+            if (tl is Translation.Value) Template.parse(tl.value) else null
+        } }
+
+    sealed interface Token<T> {
+        val path: List<String>
+
+        data class Text<T>(override val path: List<String>, val value: String) : Token<T>
+
+        data class Raw<T>(override val path: List<String>, val value: T) : Token<T>
+    }
+
+    private fun makeTokens(
+        locale: Locale,
+        template: Template,
+        args: Argument.ArgMap<T>.State,
+        res: Lines<Token<T>>,
+        path: List<String> = emptyList()
+    ) {
+        fun wrongType(factory: Argument.Factory<T>, template: Template): Nothing =
+            throw I18NException("Invalid argument factory type ${factory.name} for template type '${template.name}'")
+
+        fun Lines<Token<T>>.addText(value: String) {
+            add(value.split('\n').map { listOf(Token.Text(path, it)) })
+        }
+
+        when (template) {
+            is Template.Text -> {
+                res.addText(template.value)
+            }
+            is Template.Holder -> template.children.forEach {
+                makeTokens(locale, it, args, res)
+            }
+            is Template.Raw -> when (val factory = args.backing(template.key)) {
+                is Argument.Factory.Raw<T> -> {
+                    // build all ICU args
+                    val icuArgs = HashMap<String, Any?>()
+                    args.backing.args.forEach { (key, childFactory) ->
+                        if (childFactory is Argument.Factory.Raw<T>) {
+                            icuArgs[if (key == template.key) THIS_ARG else key] =
+                                args.compute<Argument.Raw<T>.State>(key, childFactory).backing.value
+                        }
+                    }
+
+                    // make text
+                    res.addText(MessageFormat("{${template.content}}", locale).build(icuArgs))
+                }
+                null -> {}
+                else -> wrongType(factory, template)
+            }
+            is Template.Substitution -> when (val factory = args.backing(template.key)) {
+                is Argument.Factory.Substitution<T> -> {
+                    val lines = args.compute<Argument.Substitution<T>.State>(template.key, factory).backing.value
+
+                    val separator = Lines<Token<T>>()
+                    template.separator.forEach {
+                        makeTokens(locale, it, args, separator)
+                    }
+
+                    lines.forEachIndexed { idx, line ->
+                        res.add(listOf(listOf(Token.Raw(path, line))))
+                        if (idx < lines.size - 1)
+                            res.add(separator.lines)
+                    }
+                }
+                null -> {}
+                else -> wrongType(factory, template)
+            }
+            is Template.Scope -> when (val factory = args.backing(template.key)) {
+                is Argument.Factory.Scoped<T> -> {
+                    when (val state = args.compute<Argument.State<T>>(template.key, factory)) {
+                        is Argument.ArgMap<T>.State -> {
+                            template.content.forEach { child ->
+                                makeTokens(locale, child, state, res)
+                            }
+                        }
+                        is Argument.ArgList<T>.State -> {
+                            state.compute().forEach { childState -> template.content.forEach { childTemplate ->
+                                makeTokens(locale, childTemplate, when (childState) {
+                                    is Argument.ArgMap<T>.State -> childState
+                                    else -> Argument.single(when (childState) {
+                                        is Argument.Raw<T>.State -> Argument.Factory.Raw { Argument.Raw(childState.backing.value) }
+                                        is Argument.Substitution<T>.State -> Argument.Factory.Substitution { Argument.Substitution(childState.backing.value) }
+                                        is Argument.ArgList<T>.State -> Argument.Factory.Scoped { Argument.ArgList(childState.backing.args) }
+                                        else -> throw IllegalStateException()
+                                    }).createState()
+                                }, res)
+                            } }
+                        }
+                    }
+                }
+                null -> {}
+                else -> wrongType(factory, template)
+            }
+        }
+    }
+
+    protected fun makeTokens(
+        locale: Locale,
+        template: Template,
+        args: Argument.MapScope<T>.() -> Unit
+    ): Lines<Token<T>> {
+        val arg = try {
+            Argument.buildMap(this, locale, args)
+        } catch (ex: KeyValidationException) {
+            throw I18NException("Invalid key", ex)
+        }
+        val res = Lines<Token<T>>()
+        makeTokens(locale, template, arg.State(), res)
+        return res
     }
 }
 
-/**
- * Formats a map of objects.
- * @param args Map of objects.
- * @return Formatted string.
- */
-fun MessageFormat.asString(args: Map<String, Any?>): String = StringBuffer().apply {
-    this@asString.format(args, this, FieldPosition(0))
-}.toString()
+interface Localizable<T> {
+    fun localize(ctx: I18NContext<T>): List<T>
+}
+
+const val KEY_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
+
+class KeyValidationException(string: String, val index: Int)
+    : RuntimeException("Invalid character '${string[index]}' in '$string' at position ${index+1}, valid: [$KEY_CHARS]")
+
+fun validateKey(key: String): String {
+    val idx = key.indexOfFirst { !KEY_CHARS.contains(it) }
+    if (idx != -1)
+        throw KeyValidationException(key, idx)
+    return key
+}
+
+@JvmInline
+value class Lines<T>(val lines: MutableList<MutableList<T>> = ArrayList()) {
+    fun add(other: Iterable<Iterable<T>>) {
+        if (!other.any())
+            return
+        if (lines.isEmpty()) {
+            lines.addAll(other.map { it.toMutableList() })
+        } else {
+            lines.last().addAll(other.first())
+            lines.addAll(other.drop(1).map { it.toMutableList() })
+        }
+    }
+}
