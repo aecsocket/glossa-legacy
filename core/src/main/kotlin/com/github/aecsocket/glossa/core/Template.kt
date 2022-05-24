@@ -78,10 +78,24 @@ sealed interface Template {
                 }
             }
 
+            fun MutableList<Template>.merge(other: List<Template>) {
+                if (other.isEmpty())
+                    return
+                val last = last()
+                val next = other.first()
+                // merge text templates
+                if (isNotEmpty() && last is Text && next is Text) {
+                    set(size - 1, Text(last.value + next.value))
+                    addAll(other.drop(1))
+                } else {
+                    addAll(other)
+                }
+            }
+
             TOKEN.find(format, startIndex)?.let { match ->
                 val start = match.range.first
                 val key = try {
-                    validateKey(match.groups[1]!!.value)
+                    match.groups[1]!!.value.validate()
                 } catch (ex: KeyValidationException) {
                     throw ParsingException.from(format, start + ex.index, "Invalid key", ex)
                 }

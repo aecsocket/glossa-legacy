@@ -89,15 +89,15 @@ sealed interface Argument<T> {
     }
 
     companion object {
-        fun <T> buildMap(i18n: I18N<T>, locale: Locale, value: MapScope<T>.() -> Unit): ArgMap<T> {
+        fun <T> buildMap(i18n: I18N<T>, value: MapScope<T>.() -> Unit): ArgMap<T> {
             val args = HashMap<String, Factory<T>>()
-            value(MapScope(i18n, locale) { k, v -> args[validateKey(k)] = v })
+            value(MapScope(i18n) { k, v -> args[k.validate()] = v })
             return ArgMap(args)
         }
 
-        fun <T> buildList(i18n: I18N<T>, locale: Locale, value: ListScope<T>.() -> Unit): ArgList<T> {
+        fun <T> buildList(i18n: I18N<T>, value: ListScope<T>.() -> Unit): ArgList<T> {
             val args = ArrayList<Argument<T>>()
-            value(ListScope(i18n, locale, args::add))
+            value(ListScope(i18n, args::add))
             return ArgList(args)
         }
 
@@ -105,30 +105,24 @@ sealed interface Argument<T> {
     }
 
     sealed class Scope<T>(
-        private val i18n: I18N<T>,
-        private val locale: Locale
-    ) : I18NContext<T> {
-        override fun make(key: Iterable<String>, args: MapScope<T>.() -> Unit) = i18n.make(locale, key, args)
-
-        override fun safe(key: Iterable<String>, args: MapScope<T>.() -> Unit) = i18n.safe(locale, key, args)
-
+        i18n: I18N<T>
+    ) : ForwardingI18N<T>(i18n) {
         fun rawArg(value: Any) = Raw<T>(value)
 
         fun subArg(value: List<T>) = Substitution(value)
 
-        fun tlArg(value: Localizable<T>) = Substitution(value.localize(i18n.contextOf(locale)))
+        fun tlArg(value: Localizable<T>) = Substitution(value.localize(withLocale(locale)))
 
-        fun mapArg(value: MapScope<T>.() -> Unit) = buildMap(i18n, locale, value)
+        fun mapArg(value: MapScope<T>.() -> Unit) = buildMap(this, value)
 
-        fun listArg(value: ListScope<T>.() -> Unit) = buildList(i18n, locale, value)
+        fun listArg(value: ListScope<T>.() -> Unit) = buildList(this, value)
     }
 
     // all lazy loaded
     class MapScope<T>(
         i18n: I18N<T>,
-        locale: Locale,
         val add: (String, Factory<T>) -> Unit
-    ) : Scope<T>(i18n, locale) {
+    ) : Scope<T>(i18n) {
         fun arg(key: String, arg: Factory<T>) = add(key, arg)
 
         fun raw(key: String, value: () -> Any) = arg(key, Factory.Raw { rawArg(value()) })
@@ -146,9 +140,8 @@ sealed interface Argument<T> {
     // all non-lazy loaded
     class ListScope<T>(
         i18n: I18N<T>,
-        locale: Locale,
         val add: (Argument<T>) -> Unit
-    ) : Scope<T>(i18n, locale) {
+    ) : Scope<T>(i18n) {
         fun arg(arg: Argument<T>) = add(arg)
 
         fun raw(value: Any) = arg(rawArg(value))

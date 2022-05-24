@@ -15,6 +15,16 @@ sealed interface Translation {
 
     operator fun get(vararg path: String) = get(path.asIterable())
 
+    fun walk(action: (List<String>, Translation) -> Unit, path: List<String> = emptyList()) {
+        children.forEach { (key, child) ->
+            val newPath = path + key
+            action(newPath, child)
+            child.walk(action, newPath)
+        }
+    }
+
+    fun walk(action: (List<String>, Translation) -> Unit) = walk(action, emptyList())
+
     data class Value(val value: String) : Translation {
         override val children: Map<String, Translation>
             get() = emptyMap()
@@ -40,12 +50,20 @@ sealed interface Translation {
         val locale: Locale,
         override val children: Map<String, Translation>
     ) : Parent {
+        init {
+            children.keys.forEach { it.validate() }
+        }
+
         override fun plus(other: Translation): Root {
             return Root(locale, children.merge(other.children))
         }
     }
 
     data class Section(override val children: Map<String, Translation>) : Parent {
+        init {
+            children.keys.forEach { it.validate() }
+        }
+
         override fun plus(other: Translation): Parent {
             return Section(children.merge(other.children))
         }
@@ -75,42 +93,3 @@ sealed interface Translation {
         fun buildRoot(locale: Locale, content: Scope.() -> Unit) = Root(locale, buildChildren(content))
     }
 }
-
-const val TL_SEPARATOR = "."
-
-fun Iterable<String>.tlPath() = joinToString(TL_SEPARATOR)
-
-/*
-data class Translation(
-    val locale: Locale,
-    val map: Map<String, String>
-) {
-    operator fun get(key: String) = map[key]
-
-    operator fun plus(other: Map<String, String>) = Translation(locale, map + other)
-
-    operator fun plus(other: Translation) = Translation(locale, map + other.map)
-
-    object Serializer : TypeSerializer<Translation> {
-        private const val LOCALE = "__locale__"
-
-        override fun serialize(type: Type, obj: Translation?, node: ConfigurationNode) {
-            if (obj == null) node.set(null)
-            else {
-                node.set(obj.map)
-                node.node(LOCALE).set(obj.locale)
-            }
-        }
-
-        override fun deserialize(type: Type, node: ConfigurationNode) = Translation(
-            Locale.forLanguageTag(node.node(LOCALE).req()),
-            node.childrenMap()
-                .filterKeys { it != LOCALE }
-                .map { (key, value) ->
-                    key.toString() to if (value.isList)
-                        value.req<Array<String>>().joinToString("\n")
-                    else value.req()
-                }.associate { it }
-        )
-    }
-}*/
