@@ -1,7 +1,7 @@
 package com.github.aecsocket.glossa.core
 
-import com.github.aecsocket.glossa.core.extension.build
 import com.ibm.icu.text.MessageFormat
+import java.text.FieldPosition
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -22,16 +22,12 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
         tl[locale] ?: tl[this.locale] ?: tl[Locale.ROOT]
     }
 
-    abstract class Builder<T>(var locale: Locale) {
+    abstract class Builder<T>(var locale: Locale) : I18N.Builder<T> {
         private val translations = ArrayList<Translation.Root>()
 
-        abstract fun build(): I18N<T>
-
-        fun register(tl: Translation.Root) {
+        override fun register(tl: Translation.Root) {
             translations.add(tl)
         }
-
-        fun register(locale: Locale, content: Translation.Scope.() -> Unit) = register(Translation.buildRoot(locale, content))
 
         protected fun <D : TranslationData> buildTranslationData(
             dataFactory: (Template) -> D
@@ -175,4 +171,10 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
             }
         }
     }
+}
+
+fun MessageFormat.build(args: Map<String, Any?>): String {
+    val res = StringBuffer()
+    format(args, res, FieldPosition(0))
+    return res.toString()
 }

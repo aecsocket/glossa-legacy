@@ -29,6 +29,14 @@ interface I18N<T> {
         override fun safe(locale: Locale, key: String, args: Argument.MapScope<T>.() -> Unit) =
             this@I18N.safe(locale, key, args)
     }
+
+    interface Builder<T> {
+        fun build(): I18N<T>
+
+        fun register(tl: Translation.Root)
+
+        fun register(locale: Locale, content: Translation.Scope.() -> Unit) = register(Translation.buildRoot(locale, content))
+    }
 }
 
 open class ForwardingI18N<T>(private val backing: I18N<T>) : I18N<T> {

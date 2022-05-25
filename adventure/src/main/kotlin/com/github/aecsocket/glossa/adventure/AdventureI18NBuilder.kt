@@ -14,6 +14,11 @@ class AdventureI18NBuilder(
     data class Format(val a: String)
 
     private val styles = HashMap<String, Style>()
+    private val formats = HashMap<String, Format>()
+
+    fun registerStyle(key: String, style: Style) {
+        styles[key.validate()] = style
+    }
 
     data class Data(
         override val template: Template
@@ -28,6 +33,7 @@ class AdventureI18NBuilder(
             key: String,
             args: Argument.MapScope<Component>.() -> Unit
         ) = translation(key, locale)?.let { data ->
+            val path = key.split(I18N_SEPARATOR)
             makeTokens(this, locale, data.template, args).lines.map { line ->
                 val res = text()
                 line.forEach { res.append(when (it) {
