@@ -1,106 +1,56 @@
 package com.github.aecsocket.glossa.core
 
-import com.ibm.icu.text.MessageFormat
-import java.text.FieldPosition
-import java.util.Locale
+import java.util.*
 
-/**
- * A service to localize a given key based on a locale,
- * generating a [T].
- *
- * Arguments are provided as [A] instances.
- *
- * @param T Generated object type.
- * @param A Arguments type.
- * @property locale Default locale to use, when none is specified, or when a key is not found for a locale.
- */
-interface I18N<T, A> {
-    var locale: Locale
+open class I18NException(message: String? = null, cause: Throwable? = null)
+    : RuntimeException(message, cause)
 
-    /**
-     * Generates a [T] localization based on the locale, key and args passed.
-     *
-     * Returns `null` if the key was not found in the translation or fallback
-     * locale's translation.
-     *
-     * @param locale Locale to generate with.
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    operator fun get(locale: Locale, key: String, args: A): T?
+const val THIS_ARG = "_"
+const val I18N_SEPARATOR = "."
 
-    /**
-     * Generates a [T] localization based on the key and args passed.
-     * Uses the fallback locale [locale].
-     *
-     * Returns `null` if the key was not found in the translation.
-     *
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    operator fun get(key: String, args: A) =
-        get(locale, key, args)
+interface I18N<T> {
+    val locale: Locale
 
+    fun make(locale: Locale = this.locale, key: String, args: Argument.MapScope<T>.() -> Unit = {}): List<T>?
 
-    /**
-     * Generates a [T] localization based on the locale, key and args passed.
-     *
-     * If the key was not found, generates a default [T] based on the implementation.
-     *
-     * @param locale Locale to generate with.
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    fun safe(locale: Locale, key: String, args: A): T
+    fun make(key: String, args: Argument.MapScope<T>.() -> Unit = {}) = make(locale, key, args)
 
-    /**
-     * Generates a [T] localization based on the key and args passed.
-     * Uses the fallback locale [locale].
-     *
-     * If the key was not found, generates a default [T] based on the implementation.
-     *
-     * @param key Localization key.
-     * @param args Localization arguments.
-     * @return Translation.
-     */
-    fun safe(key: String, args: A) =
-        safe(locale, key, args)
-}
+    fun safe(locale: Locale = this.locale, key: String, args: Argument.MapScope<T>.() -> Unit = {}): List<T>
 
-/**
- * Partial implementation of an I18N service.
- *
- * Handles registration of translations.
- */
-abstract class AbstractI18N<T, A>(
-    override var locale: Locale = Locale.ROOT
-) : MutableI18N<T, A> {
-    private val translations = HashMap<Locale, Translation>()
+    fun safe(key: String, args: Argument.MapScope<T>.() -> Unit = {}) = safe(locale, key, args)
 
-    fun translations() = translations.toMap()
+    fun withLocale(locale: Locale): I18N<T> = object : I18N<T> {
+        override val locale: Locale
+            get() = locale
 
-    override fun register(tl: Translation) {
-        translations[tl.locale] = translations[tl.locale]?.let {
-            Translation(it.locale, it.entries + tl.entries)
-        } ?: tl.copy()
+        override fun make(locale: Locale, key: String, args: Argument.MapScope<T>.() -> Unit) =
+            this@I18N.make(locale, key, args)
+
+        override fun safe(locale: Locale, key: String, args: Argument.MapScope<T>.() -> Unit) =
+            this@I18N.safe(locale, key, args)
     }
 
-    protected fun translation(locale: Locale, key: String) =
-        translations[locale]?.entries?.get(key) ?: translations[this.locale]?.entries?.get(key)
+    interface Builder<T> {
+        fun build(): I18N<T>
 
-    override fun clear() {
-        translations.clear()
+        fun register(tl: Translation.Root)
+
+        fun register(locale: Locale, content: Translation.Scope.() -> Unit) = register(Translation.buildRoot(locale, content))
     }
 }
 
-/**
- * Formats a map of objects.
- * @param args Map of objects.
- * @return Formatted string.
- */
-fun MessageFormat.asString(args: Map<String, Any?>): String = StringBuffer().apply {
-    this@asString.format(args, this, FieldPosition(0))
-}.toString()
+open class ForwardingI18N<T>(private val backing: I18N<T>) : I18N<T> {
+    override val locale = backing.locale
+
+    override fun make(locale: Locale, key: String, args: Argument.MapScope<T>.() -> Unit) =
+        backing.make(locale, key, args)
+
+    override fun safe(locale: Locale, key: String, args: Argument.MapScope<T>.() -> Unit) =
+        backing.safe(locale, key, args)
+}
+
+interface Localizable<T> {
+    fun localize(i18n: I18N<T>): List<T>
+}
+
+fun Iterable<String>.i18nPath() = joinToString(I18N_SEPARATOR)

@@ -2,13 +2,16 @@ plugins {
     kotlin("jvm")
 }
 
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
 dependencies {
-    implementation(projects.glossaCore)
-    implementation(libs.bundles.configurate)
-    compileOnly(libs.bundles.adventure)
+    api(projects.glossaCore)
+    compileOnly(libs.adventureApi)
+    implementation(libs.adventureTextMiniMessage)
 
     testImplementation(kotlin("test"))
-    testImplementation(libs.configurateHocon)
-    testImplementation(libs.bundles.adventure)
     testImplementation(libs.adventureTextSerializerGson)
 }

@@ -11,19 +11,12 @@ pluginManagement {
     }
 }
 
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-}
-
 rootProject.name = "glossa"
 
 listOf(
     "core",
-    "adventure"
+    "adventure",
+    "configurate"
 ).forEach {
     val name = "${rootProject.name}-$it"
     include(name)
