@@ -10,6 +10,11 @@ allprojects {
     description = "ICU-based localization library"
 }
 
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
 subprojects {
     apply<JavaLibraryPlugin>()
     plugins.apply("org.jetbrains.dokka")
