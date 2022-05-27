@@ -30,7 +30,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
         }
 
         protected fun <D : TranslationData> buildTranslationData(
-            dataFactory: (Template) -> D
+            dataFactory: (List<String>, Template) -> D
         ): Map<String, Map<Locale, D>> {
             val res = HashMap<String, MutableMap<Locale, D>>()
             translations.forEach { tl ->
@@ -41,7 +41,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         } catch (ex: Template.ParsingException) {
                             throw I18NException("Failed to register '${path.i18nPath()}'", ex)
                         }
-                        res.computeIfAbsent(path.i18nPath()) { HashMap() }[tl.locale] = dataFactory(template)
+                        res.computeIfAbsent(path.i18nPath()) { HashMap() }[tl.locale] = dataFactory(path, template)
                     }
                 }
             }

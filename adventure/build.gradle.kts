@@ -3,12 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation(projects.glossaCore)
-    implementation(libs.bundles.configurate)
-    compileOnly(libs.bundles.adventure)
+    api(projects.glossaCore)
+    api(libs.adventureApi)
+    implementation(libs.adventureTextMiniMessage)
 
     testImplementation(kotlin("test"))
-    testImplementation(libs.configurateHocon)
-    testImplementation(libs.bundles.adventure)
     testImplementation(libs.adventureTextSerializerGson)
 }

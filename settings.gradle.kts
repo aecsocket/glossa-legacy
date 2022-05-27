@@ -23,8 +23,8 @@ rootProject.name = "glossa"
 
 listOf(
     "core",
-    "configurate",
-    "adventure"
+    "adventure",
+    "configurate"
 ).forEach {
     val name = "${rootProject.name}-$it"
     include(name)

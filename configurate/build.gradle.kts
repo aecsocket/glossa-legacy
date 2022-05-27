@@ -3,11 +3,11 @@ plugins {
 }
 
 dependencies {
-    implementation(projects.glossaCore)
     implementation(projects.glossaAdventure)
-    implementation(libs.bundles.configurate)
-    compileOnly(libs.bundles.adventure)
+    implementation(libs.adventureSerializerConfigurate)
+    api(libs.configurateCore)
+    implementation(libs.configurateExtraKotlin)
+    implementation(libs.alexandriaCore)
 
     testImplementation(kotlin("test"))
-    testImplementation(libs.configurateHocon)
 }

@@ -5,7 +5,9 @@ import java.util.*
 class StringI18NBuilder(locale: Locale) : AbstractI18N.Builder<String>(locale) {
     override fun build() = object : AbstractI18N<String, AbstractI18N.TranslationData.Simple>(
         locale,
-        buildTranslationData { TranslationData.Simple(it) }
+        buildTranslationData { _, template ->
+            TranslationData.Simple(template)
+        }
     ) {
         override fun make(
             locale: Locale,
