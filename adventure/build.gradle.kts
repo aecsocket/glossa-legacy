@@ -2,6 +2,11 @@ plugins {
     kotlin("jvm")
 }
 
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
 dependencies {
     api(projects.glossaCore)
     api(libs.adventureApi)
