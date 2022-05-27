@@ -9,7 +9,7 @@ repositories {
 
 dependencies {
     api(projects.glossaCore)
-    api(libs.adventureApi)
+    compileOnly(libs.adventureApi)
     implementation(libs.adventureTextMiniMessage)
 
     testImplementation(kotlin("test"))

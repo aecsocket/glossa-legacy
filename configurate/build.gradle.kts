@@ -5,15 +5,14 @@ plugins {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven("https://jitpack.io")
 }
 
 dependencies {
     implementation(projects.glossaAdventure)
-    implementation(libs.adventureSerializerConfigurate)
+    compileOnly(libs.adventureApi)
     api(libs.configurateCore)
     implementation(libs.configurateExtraKotlin)
-    implementation(libs.alexandriaCore)
+    implementation(libs.adventureSerializerConfigurate)
 
     testImplementation(kotlin("test"))
 }

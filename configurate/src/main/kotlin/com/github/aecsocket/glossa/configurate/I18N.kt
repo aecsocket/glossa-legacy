@@ -1,10 +1,10 @@
 package com.github.aecsocket.glossa.configurate
 
-import com.github.aecsocket.alexandria.core.extension.force
 import com.github.aecsocket.glossa.adventure.I18NFormat
 import com.github.aecsocket.glossa.core.Translation
 import net.kyori.adventure.text.format.Style
 import org.spongepowered.configurate.ConfigurationNode
+import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.serialize.SerializationException
 
 object I18NLoader {
@@ -14,7 +14,7 @@ object I18NLoader {
     fun loadTranslations(node: ConfigurationNode): List<Translation.Root> {
         return ArrayList<Translation.Root>().apply {
             node.childrenMap().forEach { (_, child) ->
-                add(child.force())
+                add(child.get() ?: throw SerializationException(child, Translation.Root::class.java, null, null))
             }
         }
     }

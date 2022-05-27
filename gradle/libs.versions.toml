@@ -3,7 +3,6 @@
 icu4j = "68.1"
 adventure = "4.10.1"
 configurate = "4.1.2"
-alexandria = "0.3.1"
 
 [libraries]
 
@@ -17,5 +16,3 @@ adventureTextSerializerGson = { group = "net.kyori", name = "adventure-text-seri
 configurateCore = { group = "org.spongepowered", name = "configurate-core", version.ref = "configurate" }
 configurateExtraKotlin = { group = "org.spongepowered", name = "configurate-extra-kotlin", version.ref = "configurate" }
 configurateHocon = { group = "org.spongepowered", name = "configurate-hocon", version.ref = "configurate" }
-
-alexandriaCore = { group = "com.github.aecsocket.alexandria", name = "alexandria-core", version.ref = "alexandria" }

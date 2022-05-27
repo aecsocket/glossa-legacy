@@ -1,8 +1,5 @@
 package com.github.aecsocket.glossa.configurate
 
-import com.github.aecsocket.alexandria.core.extension.force
-import com.github.aecsocket.alexandria.core.extension.register
-import com.github.aecsocket.alexandria.core.serializer.LocaleSerializer
 import com.github.aecsocket.glossa.adventure.I18NFormat
 import com.github.aecsocket.glossa.core.KeyValidationException
 import com.github.aecsocket.glossa.core.Translation
@@ -13,8 +10,12 @@ import org.spongepowered.configurate.serialize.SerializationException
 import org.spongepowered.configurate.serialize.TypeSerializer
 import org.spongepowered.configurate.serialize.TypeSerializerCollection
 import java.lang.reflect.Type
+import java.util.*
+import kotlin.collections.HashMap
 
 object TranslationSerializer : TypeSerializer<Translation.Root> {
+    private const val ROOT = "root"
+
     override fun serialize(type: Type, obj: Translation.Root?, node: ConfigurationNode) {
         if (obj == null) node.set(null)
         else {
@@ -42,8 +43,9 @@ object TranslationSerializer : TypeSerializer<Translation.Root> {
             return res
         }
 
+        val key = node.key().toString()
         return Translation.Root(
-            LocaleSerializer.fromString(node.key().toString()),
+            if (key == ROOT) Locale.ROOT else Locale.forLanguageTag(key),
             deserialize0(node)
         )
     }
@@ -68,7 +70,7 @@ object I18NFormatSerializer : TypeSerializer<I18NFormat> {
 
 object I18NSerializers {
     val ALL = TypeSerializerCollection.builder()
-        .register(Translation.Root::class, TranslationSerializer)
+        .register(Translation.Root::class.java, TranslationSerializer)
         .register(I18NFormat::class.java, I18NFormatSerializer)
         .registerAll(ConfigurateComponentSerializer.configurate().serializers())
         .build()
