@@ -8,10 +8,12 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import java.util.Locale
 
 data class I18NFormat(
-    val style: String
+    val style: String?,
+    val args: Map<List<String>, String> = emptyMap()
 ) {
     data class Data(
-        val style: Style?
+        val style: Style?,
+        val args: Map<String, Style>
     )
 }
 
@@ -38,11 +40,23 @@ class AdventureI18NBuilder(
     override fun build() = object : AbstractI18N<Component, Data>(
         locale,
         buildTranslationData { path, template ->
-            var style: String? = null
-            for (i in path.indices) {
-                formats[path.subList(0, i)]?.let { style = it.style }
+            var parentStyle: String? = null
+            path.indices.reversed().forEach { i ->
+                formats[path.subList(0, i + 1)]?.let { format ->
+                    format.style?.let { parentStyle = it }
+                    return@forEach
+                }
             }
-            Data(template, I18NFormat.Data(styles[style]))
+
+            val rawFormat = formats[path]
+            val format = I18NFormat(
+                rawFormat?.style ?: parentStyle,
+                rawFormat?.args ?: emptyMap()
+            )
+
+            Data(template, I18NFormat.Data(styles[format.style], format.args.map { (key, value) ->
+                styles[value]?.let { key.joinToString(I18N_SEPARATOR) to it }
+            }.filterNotNull().associate { it }))
         }
     ) {
         override fun make(
@@ -51,12 +65,17 @@ class AdventureI18NBuilder(
             args: Argument.MapScope<Component>.() -> Unit
         ) = translation(key, locale)?.let { data ->
             val format = data.format
+
+            fun Component.doStyle(style: Style?): Component = style?.let { applyFallbackStyle(it) } ?: this
+
             makeTokens(this, locale, data.template, args).lines.map { line ->
                 val res = text()
-                line.forEach { res.append(when (it) {
-                    is Token.Text -> miniMessage.deserialize(it.value)
-                    is Token.Raw -> it.value
-                }) }
+                line.forEach {
+                    res.append(when (it) {
+                        is Token.Text -> miniMessage.deserialize(it.value)
+                        is Token.Raw -> it.value
+                    }.doStyle(format?.args?.get(it.path)))
+                }
                 val component = res.build()
                 format?.let { fmt -> fmt.style?.let { component.applyFallbackStyle(it) } } ?: component
             }

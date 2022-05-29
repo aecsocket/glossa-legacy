@@ -1,11 +1,14 @@
 package com.github.aecsocket.glossa.configurate
 
 import com.github.aecsocket.glossa.adventure.I18NFormat
+import com.github.aecsocket.glossa.core.I18N_SEPARATOR
 import com.github.aecsocket.glossa.core.KeyValidationException
 import com.github.aecsocket.glossa.core.Translation
 import com.github.aecsocket.glossa.core.validate
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
+import net.kyori.adventure.text.format.Style
 import org.spongepowered.configurate.ConfigurationNode
+import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.serialize.SerializationException
 import org.spongepowered.configurate.serialize.TypeSerializer
 import org.spongepowered.configurate.serialize.TypeSerializerCollection
@@ -52,19 +55,32 @@ object TranslationSerializer : TypeSerializer<Translation.Root> {
 }
 
 object I18NFormatSerializer : TypeSerializer<I18NFormat> {
+    private const val STYLE = "style"
+    private const val ARGS = "args"
+
     override fun serialize(type: Type, obj: I18NFormat?, node: ConfigurationNode) {
         if (obj == null) node.set(null)
         else {
             node.appendListNode().set(obj.style)
+            node.appendListNode().set(obj.args)
         }
     }
 
     override fun deserialize(type: Type, node: ConfigurationNode): I18NFormat {
-        if (!node.isList)
-            throw SerializationException(node, type, "Format must be list")
-        return I18NFormat(
-            node.node(0).force()
-        )
+        fun args(node: ConfigurationNode) = node.childrenMap().map { (key, child) ->
+            key.toString().split(I18N_SEPARATOR) to child.force<String>()
+        }.associate { it }
+
+        return if (node.isList) {
+            I18NFormat(
+                node.node(0).get(),
+                args(node.node(1))
+            )
+        } else if (node.isMap) {
+            I18NFormat(null, args(node))
+        } else {
+            I18NFormat(node.force())
+        }
     }
 }
 
