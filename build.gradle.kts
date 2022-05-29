@@ -6,7 +6,7 @@ plugins {
 
 allprojects {
     group = "com.github.aecsocket.glossa"
-    version = "0.3.0-SNAPSHOT"
+    version = "0.3.1"
     description = "ICU-based localization library"
 }
 

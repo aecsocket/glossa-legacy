@@ -1,6 +1,7 @@
 package com.github.aecsocket.glossa.configurate
 
 import com.github.aecsocket.glossa.adventure.I18NFormat
+import com.github.aecsocket.glossa.core.I18N_SEPARATOR
 import com.github.aecsocket.glossa.core.Translation
 import net.kyori.adventure.text.format.Style
 import org.spongepowered.configurate.ConfigurationNode
@@ -28,20 +29,9 @@ object I18NLoader {
     }
 
     fun loadFormats(node: ConfigurationNode): Map<List<String>, I18NFormat> {
-        val res = HashMap<List<String>, I18NFormat>()
-        fun loadFormats0(node: ConfigurationNode, path: List<String> = emptyList()) {
-            node.childrenMap().forEach { (_, child) ->
-                val newPath = path + I18NSerializers.key(child)
-                if (child.isList) {
-                    res[newPath] = child.force()
-                } else if (child.isMap) {
-                    loadFormats0(child, newPath)
-                } else
-                    throw SerializationException(child, I18NFormat::class.java, "Format must be list or map")
-            }
-        }
-        loadFormats0(node)
-        return res
+        return node.childrenMap()
+            .map { (key, child) -> key.toString().split(I18N_SEPARATOR) to child.force<I18NFormat>() }
+            .associate { it }
     }
 
     data class Loaded(
