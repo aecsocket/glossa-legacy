@@ -1,110 +1,242 @@
 package com.github.aecsocket.glossa.core
 
-import com.ibm.icu.impl.units.UnitConverter
-import com.ibm.icu.text.MessageFormat
 import com.ibm.icu.util.MeasureUnit
 import org.junit.jupiter.api.Test
 import java.util.*
+import kotlin.test.assertEquals
 
 class StringI18NTest {
+    private val root = Locale.ROOT
+    private val english = Locale.US
+    private val german = Locale.GERMAN
+    private val french = Locale.FRENCH
+
+    private fun i18n() = StringI18NBuilder(english).apply {
+        register(english) {
+            value("basic", "EN: Basic message")
+            value("templated_string", "EN: String = @string{_}")
+            value("templated_number", """
+                EN: Number = @number{_, number}
+                Decimal = @decimal{_, number, :: .00}
+                Percent = @percent{_, number, percent}
+            """.trimIndent())
+            value("templated_date", """
+                EN: Short = @date{_, date, short}
+                Long = @date{_, date, long}
+            """.trimIndent())
+
+            value("repeated", """
+                List: @list[
+                  - @name{_}]
+            """.trimIndent())
+            value("repeated_compact", """
+                List: @list[
+                  - @_{_}]
+            """.trimIndent())
+            value("repeated_separated", "List: @list[@_{_}][, ]")
+            value("substituted", "Sub: @sub( | )")
+            value("item", """
+                '@name{_}'
+                Count: @count{_, number}
+            """.trimIndent())
+        }
+
+        register(german) {
+            value("basic", "DE: Basic message")
+            value("templated_string", "DE: String = @string{_}")
+            value("templated_number", """
+                DE: Number = @number{_, number}
+                Decimal = @decimal{_, number, :: .00}
+                Percent = @percent{_, number, percent}
+            """.trimIndent())
+            value("templated_date", """
+                DE: Short = @date{_, date, short}
+                Long = @date{_, date, long}
+            """.trimIndent())
+        }
+
+        register(root) {
+            value("root_fallback", "ROOT: fallback")
+        }
+    }.build()
+
     @Test
-    fun test() {
-        val locale = Locale.US
-        val i18n = StringI18NBuilder(locale).apply {
-            register(locale) {
-                section("message") {
-                    value("one", "Alpha: @alpha{_, number} | Beta: @beta{_, number} | Sub: @sub( (sep.. @beta{_}) )")
-                    value("two", """
-                    Actions: @actions[
-                      @total{_, plural, one {# purchase} other {# purchases}} on @date{_, date, short}: @purchases[
-                        - "@name()" x@amount{_, number}]]
-                """.trimIndent())
-                }
-            }
-        }.build()
+    fun testTranslation() {
+        i18n().apply {
+            assertEquals(listOf(
+                "EN: Basic message"
+            ), make(english, "basic"))
 
-        val template = Template.parse("""
-            Alpha: @alpha{_, number} | Beta: @beta{_, number}
-        """.trimIndent())
+            assertEquals(listOf(
+                "DE: Basic message"
+            ), make(german, "basic"))
 
-        println(template)
+            assertEquals(listOf(
+                "EN: Basic message"
+            ), make(french, "basic"))
 
-        val args = Argument.buildMap(i18n) {
-            raw("alpha") { 5.5 }
-            raw("beta") { 1_234.5 }
+            assertEquals(listOf(
+                "ROOT: fallback"
+            ), make(english, "root_fallback"))
         }
-
-        println(args)
-
-        i18n.make(locale, "message.one") {
-            raw("alpha") { println("GEN ALPHA"); 5.5 }
-            raw("beta") { println("GEN BETA"); 1_234.5 }
-            sub("sub") { println("GEN SUB"); listOf("Hello", "World") }
-        }?.let { lines ->
-            println("Lines:")
-            lines.forEach { println("  $it") }
-        } ?: println("(no lines)")
-
-        val date = Date(System.currentTimeMillis())
-
-        data class Item(val id: String) : Localizable<String> {
-            override fun localize(i18n: I18N<String>) = i18n.safe("item.$id")
-        }
-
-        i18n.make(locale, "message.two") {
-            list("actions") {
-                map {
-                    raw("total") { 5 }
-                    raw("date") { date }
-                    list("purchases") {
-                        map {
-                            tl("name") { Item("item_one") }
-                            raw("amount") { 3 }
-                        }
-                        map {
-                            tl("name") { Item("item_two") }
-                            raw("amount") { 2 }
-                        }
-                    }
-                }
-                map {
-                    raw("total") { 1 }
-                    raw("date") { date }
-                    list("purchases") {
-                        map {
-                            sub("name") { listOf("Item") }
-                            raw("amount") { 1 }
-                        }
-                    }
-                }
-            }
-        }?.forEach { println(it) }
     }
 
     @Test
-    fun otherTest() {
-        val i18n = StringI18NBuilder(Locale.US).apply {
-            register(Locale.US) {
-                value("test", "Health: @health{_, number, :: %x100 .00}\n" +
-                        "Money: @money{_, number, :: currency/GRD}")
-            }
-        }.build()
+    fun testSafe() {
+        i18n().apply {
+            assertEquals(listOf(
+                "EN: Basic message"
+            ), safe(english, "basic"))
 
-        i18n.safe(Locale.US, "test") {
-            raw("money") { 1234 }
-        }.forEach { println(it) }
+            assertEquals(listOf(
+                "unknown_key"
+            ), safe(english, "unknown_key"))
+        }
+    }
 
-        MeasureUnit.getAvailable()
-            .filter { it.type == "currency" }
-            .sortedBy { it.subtype }
-            .map { it as com.ibm.icu.util.Currency }
-            //.forEach { println("${it.subtype} - ${it.displayName}") }
+    @Test
+    fun testRawStrings() {
+        i18n().apply {
+            assertEquals(listOf(
+                "EN: String = test string"
+            ), make(english, "templated_string") {
+                raw("string") { "test string" }
+            })
 
-        println("\n\n\n\n")
+            assertEquals(listOf(
+                "DE: String = test string"
+            ), make(german, "templated_string") {
+                raw("string") { "test string" }
+            })
+        }
+    }
 
-        MeasureUnit.getAvailable()
-            .filter { it.type != "currency" }
-            .sortedBy { it.subtype }
-            //.forEach { println(it.subtype) }
+    @Test
+    fun testRawNumbers() {
+        i18n().apply {
+            assertEquals(listOf(
+                "EN: Number = 12,345",
+                "Decimal = 34.57",
+                "Percent = 35%"
+            ), make(english, "templated_number") {
+                raw("number") { 12_345 }
+                raw("decimal") { 34.567 }
+                raw("percent") { 0.35 }
+            })
+
+            assertEquals(listOf(
+                "DE: Number = 12.345",
+                "Decimal = 34,57",
+                "Percent = 35 %" // nbsp here
+            ), make(german, "templated_number") {
+                raw("number") { 12_345 }
+                raw("decimal") { 34.567 }
+                raw("percent") { 0.35 }
+            })
+        }
+    }
+
+    @Test
+    fun testRawDates() {
+        val date = Date(0)
+        i18n().apply {
+            assertEquals(listOf(
+                "EN: Short = 1/1/70",
+                "Long = January 1, 1970"
+            ), make(english, "templated_date") {
+                raw("date") { date }
+            })
+
+            assertEquals(listOf(
+                "DE: Short = 01.01.70",
+                "Long = 1. Januar 1970"
+            ), make(german, "templated_date") {
+                raw("date") { date }
+            })
+        }
+    }
+
+    @Test
+    fun testScopes() {
+        i18n().apply {
+            assertEquals(listOf(
+                "List: ",
+                "  - One",
+                "  - Two"
+            ), make(english, "repeated") {
+                list("list") {
+                    map {
+                        raw("name") { "One" }
+                    }
+                    map {
+                        raw("name") { "Two" }
+                    }
+                }
+            })
+
+            assertEquals(listOf(
+                "List: ",
+                "  - One",
+                "  - Two"
+            ), make(english, "repeated_compact") {
+                list("list") {
+                    raw("One")
+                    raw("Two")
+                }
+            })
+        }
+    }
+
+    @Test
+    fun testScopesSeparated() {
+        i18n().apply {
+            assertEquals(listOf(
+                "List: One, Two, Three"
+            ), make(english, "repeated_separated") {
+                list("list") {
+                    raw("One")
+                    raw("Two")
+                    raw("Three")
+                }
+            })
+        }
+    }
+
+    @Test
+    fun testSubstitution() {
+        i18n().apply {
+            assertEquals(listOf(
+                "Sub: text value"
+            ), make(english, "substituted") {
+                sub("sub") { listOf("text value") }
+            })
+
+            assertEquals(listOf(
+                "Sub: one | two"
+            ), make(english, "substituted") {
+                sub("sub") { listOf("one", "two") }
+            })
+        }
+    }
+
+    @Test
+    fun testSubLocalized() {
+        data class Item(val name: String, val count: Int) : Localizable<String> {
+            override fun localize(i18n: I18N<String>) =
+                i18n.safe("item") {
+                    raw("name") { name }
+                    raw("count") { count }
+                }
+        }
+
+        val item = Item("item", 3)
+
+        i18n().apply {
+            assertEquals(listOf(
+                "Sub: 'item' | Count: 3"
+            ), make(english, "substituted") {
+                tl("sub") { item }
+            })
+        }
     }
 }
