@@ -1,4 +1,4 @@
-name: "Build"
+name: "Publish docs"
 
 on:
   release:
@@ -26,8 +26,7 @@ jobs:
 
       - name: "Build docs"
         run: ./gradlew dokkaHtmlMultiModule
-      - name: "Upload docs"
-        uses: JamesIves/github-pages-deploy-action@v4.3.3
+      - uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
           token: ${{ secrets.DOCS_TOKEN }}
           repository-name: aecsocket/aecsocket.github.io

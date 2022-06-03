@@ -17,8 +17,8 @@ repositories {
 
 subprojects {
     apply<JavaLibraryPlugin>()
-    plugins.apply("org.jetbrains.dokka")
-    plugins.apply("maven-publish")
+    apply(plugin = "org.jetbrains.dokka")
+    apply(plugin = "maven-publish")
 
     publishing {
         publications {
