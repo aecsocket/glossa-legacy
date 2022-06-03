@@ -2,9 +2,16 @@ package com.github.aecsocket.glossa.core
 
 import java.util.Locale
 
+/**
+ * A node in a translation structure.
+ */
 sealed interface Translation {
+    /** This node's children. */
     val children: Map<String, Translation>
 
+    /**
+     * Gets a child in this node structure.
+     */
     operator fun get(path: Iterable<String>): Translation? {
         var cur = this
         path.forEach {
@@ -13,8 +20,14 @@ sealed interface Translation {
         return cur
     }
 
+    /**
+     * Gets a child in this node structure.
+     */
     operator fun get(vararg path: String) = get(path.asIterable())
 
+    /**
+     * Recursively iterates over all nodes in this structure.
+     */
     fun walk(action: (List<String>, Translation) -> Unit, path: List<String> = emptyList()) {
         children.forEach { (key, child) ->
             val newPath = path + key
@@ -23,17 +36,33 @@ sealed interface Translation {
         }
     }
 
+    /**
+     * Recursively iterates over all nodes in this structure.
+     */
     fun walk(action: (List<String>, Translation) -> Unit) = walk(action, emptyList())
 
+    /**
+     * A leaf node in a translation tree that holds a translation.
+     * This node cannot hold any children.
+     */
     data class Value(val value: String) : Translation {
         override val children: Map<String, Translation>
             get() = emptyMap()
     }
 
+    /**
+     * A node that can hold child nodes.
+     */
     interface Parent : Translation {
+        /**
+         * Merges this translation with another, prioritising the other.
+         */
         operator fun plus(other: Translation): Parent
     }
 
+    /**
+     * Merges this translation with another, prioritising the other.
+     */
     fun Map<String, Translation>.merge(other: Map<String, Translation>): Map<String, Translation> {
         val res = toMutableMap()
         other.forEach { (key, value) ->
@@ -46,12 +75,16 @@ sealed interface Translation {
         return res
     }
 
+    /**
+     * A root node in a translation tree, holding the locale this tree is for.
+     * @property locale The locale of the translation.
+     */
     data class Root(
         val locale: Locale,
         override val children: Map<String, Translation>
     ) : Parent {
         init {
-            children.keys.forEach { it.validate() }
+            children.keys.forEach { Keys.validate(it) }
         }
 
         override fun plus(other: Translation): Root {
@@ -59,9 +92,12 @@ sealed interface Translation {
         }
     }
 
+    /**
+     * A node in a translation tree, holding child nodes.
+     */
     data class Section(override val children: Map<String, Translation>) : Parent {
         init {
-            children.keys.forEach { it.validate() }
+            children.keys.forEach { Keys.validate(it) }
         }
 
         override fun plus(other: Translation): Parent {
@@ -69,6 +105,9 @@ sealed interface Translation {
         }
     }
 
+    /**
+     * A DSL scope for building a translation.
+     */
     interface Scope {
         fun value(key: String, value: String)
 
@@ -76,6 +115,9 @@ sealed interface Translation {
     }
 
     companion object {
+        /**
+         * Builds translation node children from a scope.
+         */
         fun buildChildren(content: Scope.() -> Unit): Map<String, Translation> {
             val res = HashMap<String, Translation>()
             content(object : Scope {
@@ -90,6 +132,9 @@ sealed interface Translation {
             return res
         }
 
+        /**
+         * Builds a translation root from a scope.
+         */
         fun buildRoot(locale: Locale, content: Scope.() -> Unit) = Root(locale, buildChildren(content))
     }
 }

@@ -2,6 +2,9 @@ package com.github.aecsocket.glossa.core
 
 import java.util.*
 
+/**
+ * An I18N builder implementation for services which translate into strings.
+ */
 class StringI18NBuilder(locale: Locale) : AbstractI18N.Builder<String>(locale) {
     override fun build() = object : AbstractI18N<String, AbstractI18N.TranslationData.Simple>(
         locale,

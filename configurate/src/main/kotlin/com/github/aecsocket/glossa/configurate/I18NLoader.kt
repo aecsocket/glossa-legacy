@@ -8,10 +8,17 @@ import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.serialize.SerializationException
 
+/**
+ * Handles loading I18N data from [ConfigurationNode]s.
+ */
 object I18NLoader {
     private const val STYLES = "styles"
     private const val FORMATS = "formats"
 
+    /**
+     * Loads translations, with each child map node representing a translation for a specific locale.
+     * Translation sections are loaded recursively.
+     */
     fun loadTranslations(node: ConfigurationNode): List<Translation.Root> {
         return ArrayList<Translation.Root>().apply {
             node.childrenMap().forEach { (_, child) ->
@@ -20,6 +27,9 @@ object I18NLoader {
         }
     }
 
+    /**
+     * Loads styles, with each child node representing a style for a specific key.
+     */
     fun loadStyles(node: ConfigurationNode): Map<String, Style> {
         return HashMap<String, Style>().apply {
             node.childrenMap().forEach { (_, child) ->
@@ -28,6 +38,10 @@ object I18NLoader {
         }
     }
 
+    /**
+     * Loads formats, with each child node representing a format for a specific message key.
+     * Translation sections are **not** loaded recursively, so each key must be quoted.
+     */
     fun loadFormats(node: ConfigurationNode): Map<List<String>, I18NFormat> {
         return node.childrenMap()
             .map { (key, child) -> key.toString().split(I18N_SEPARATOR) to child.force<I18NFormat>() }
@@ -40,6 +54,13 @@ object I18NLoader {
         val formats: Map<List<String>, I18NFormat>
     )
 
+    /**
+     * Loads translations, styles and formats from one node.
+     *
+     * * Styles are loaded from `styles`
+     * * Formats are loaded from `formats`
+     * * Translations are loaded from the remaining nodes
+     */
     fun loadAll(
         node: ConfigurationNode
     ): Loaded {

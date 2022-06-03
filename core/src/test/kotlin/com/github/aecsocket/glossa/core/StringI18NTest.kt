@@ -1,5 +1,8 @@
 package com.github.aecsocket.glossa.core
 
+import com.ibm.icu.impl.units.UnitConverter
+import com.ibm.icu.text.MessageFormat
+import com.ibm.icu.util.MeasureUnit
 import org.junit.jupiter.api.Test
 import java.util.*
 
@@ -76,5 +79,32 @@ class StringI18NTest {
                 }
             }
         }?.forEach { println(it) }
+    }
+
+    @Test
+    fun otherTest() {
+        val i18n = StringI18NBuilder(Locale.US).apply {
+            register(Locale.US) {
+                value("test", "Health: @health{_, number, :: %x100 .00}\n" +
+                        "Money: @money{_, number, :: currency/GRD}")
+            }
+        }.build()
+
+        i18n.safe(Locale.US, "test") {
+            raw("money") { 1234 }
+        }.forEach { println(it) }
+
+        MeasureUnit.getAvailable()
+            .filter { it.type == "currency" }
+            .sortedBy { it.subtype }
+            .map { it as com.ibm.icu.util.Currency }
+            //.forEach { println("${it.subtype} - ${it.displayName}") }
+
+        println("\n\n\n\n")
+
+        MeasureUnit.getAvailable()
+            .filter { it.type != "currency" }
+            .sortedBy { it.subtype }
+            //.forEach { println(it.subtype) }
     }
 }

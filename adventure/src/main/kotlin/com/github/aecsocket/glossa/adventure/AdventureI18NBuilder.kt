@@ -7,6 +7,11 @@ import net.kyori.adventure.text.format.Style
 import net.kyori.adventure.text.minimessage.MiniMessage
 import java.util.Locale
 
+/**
+ * A format for a specific message in an [AdventureI18NBuilder] I18N service.
+ * @property style The key of the style for the entire message.
+ * @property args The keys for each style for each argument.
+ */
 data class I18NFormat(
     val style: String?,
     val args: Map<List<String>, String> = emptyMap()
@@ -17,6 +22,10 @@ data class I18NFormat(
     )
 }
 
+/**
+ * An I18N builder implementation which applies styling and formatting, and generates
+ * Adventure components.
+ */
 class AdventureI18NBuilder(
     locale: Locale
 ) : AbstractI18N.Builder<Component>(locale) {
@@ -24,12 +33,18 @@ class AdventureI18NBuilder(
     private val styles = HashMap<String, Style>()
     private val formats = HashMap<List<String>, I18NFormat>()
 
+    /**
+     * Registers a style on this builder.
+     */
     fun registerStyle(key: String, style: Style) {
-        styles[key.validate()] = style
+        styles[Keys.validate(key)] = style
     }
 
+    /**
+     * Registers a format on this builder.
+     */
     fun registerFormat(key: List<String>, format: I18NFormat) {
-        formats[key.map { it.validate() }] = format
+        formats[key.map { Keys.validate(it) }] = format
     }
 
     data class Data(

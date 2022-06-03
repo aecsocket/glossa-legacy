@@ -1,10 +1,7 @@
 package com.github.aecsocket.glossa.configurate
 
 import com.github.aecsocket.glossa.adventure.I18NFormat
-import com.github.aecsocket.glossa.core.I18N_SEPARATOR
-import com.github.aecsocket.glossa.core.KeyValidationException
-import com.github.aecsocket.glossa.core.Translation
-import com.github.aecsocket.glossa.core.validate
+import com.github.aecsocket.glossa.core.*
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.format.Style
 import org.spongepowered.configurate.ConfigurationNode
@@ -85,14 +82,18 @@ object I18NFormatSerializer : TypeSerializer<I18NFormat> {
 }
 
 object I18NSerializers {
+    /**
+     * All type serializers that are required for loading [ConfigurationNode]s.
+     * This collection includes [ConfigurateComponentSerializer] serializers.
+     */
     val ALL = TypeSerializerCollection.builder()
         .register(Translation.Root::class.java, TranslationSerializer)
         .register(I18NFormat::class.java, I18NFormatSerializer)
         .registerAll(ConfigurateComponentSerializer.configurate().serializers())
         .build()
 
-    fun key(node: ConfigurationNode) = try {
-        node.key().toString().validate()
+    internal fun key(node: ConfigurationNode) = try {
+        Keys.validate(node.key().toString())
     } catch (ex: KeyValidationException) {
         throw SerializationException(node, String::class.java, "Invalid key", ex)
     }

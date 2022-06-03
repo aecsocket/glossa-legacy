@@ -95,7 +95,7 @@ sealed interface Template {
             TOKEN.find(format, startIndex)?.let { match ->
                 val start = match.range.first
                 val key = try {
-                    match.groups[1]!!.value.validate()
+                    Keys.validate(match.groups[1]!!.value)
                 } catch (ex: KeyValidationException) {
                     throw ParsingException.from(format, start + ex.index, "Invalid key", ex)
                 }
