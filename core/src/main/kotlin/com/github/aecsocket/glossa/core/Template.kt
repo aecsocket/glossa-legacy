@@ -25,12 +25,11 @@ sealed interface Template {
     }
 
     data class Substitution(
-        val key: String,
-        val separator: List<Template>
+        val key: String
     ) : Template {
         override val name: String
             get() = "substitution"
-        override fun toString() = "@$key(${separator.joinToString(", ")})"
+        override fun toString() = "@$key()"
     }
 
     data class Scope(
@@ -123,8 +122,8 @@ sealed interface Template {
                     )
                     SUBSTITUTION_ENTER.toString() -> format.countEnterExit(
                         SUBSTITUTION_ENTER, SUBSTITUTION_EXIT, contentStart,
-                        { content, end ->
-                            res.add(Substitution(key, tryParse(content)))
+                        { _, end ->
+                            res.add(Substitution(key))
                             end
                         },
                         { throw ParsingException.from(format, format.length, "Not enough substitution exits") }

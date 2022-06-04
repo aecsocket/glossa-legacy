@@ -1,6 +1,5 @@
 package com.github.aecsocket.glossa.core
 
-import com.ibm.icu.util.MeasureUnit
 import org.junit.jupiter.api.Test
 import java.util.*
 import kotlin.test.assertEquals
@@ -34,7 +33,8 @@ class StringI18NTest {
                   - @_{_}]
             """.trimIndent())
             value("repeated_separated", "List: @list[@_{_}][, ]")
-            value("substituted", "Sub: @sub( | )")
+            value("substituted_single", "Sub: @sub()")
+            value("substituted_list", "Sub: @sub[@_()][ | ]")
             value("item", """
                 '@name{_}'
                 Count: @count{_, number}
@@ -207,14 +207,17 @@ class StringI18NTest {
         i18n().apply {
             assertEquals(listOf(
                 "Sub: text value"
-            ), make(english, "substituted") {
-                sub("sub") { listOf("text value") }
+            ), make(english, "substituted_single") {
+                sub("sub") { "text value" }
             })
 
             assertEquals(listOf(
                 "Sub: one | two"
-            ), make(english, "substituted") {
-                sub("sub") { listOf("one", "two") }
+            ), make(english, "substituted_list") {
+                list("sub") {
+                    sub("one")
+                    sub("two")
+                }
             })
         }
     }
@@ -234,7 +237,7 @@ class StringI18NTest {
         i18n().apply {
             assertEquals(listOf(
                 "Sub: 'item' | Count: 3"
-            ), make(english, "substituted") {
+            ), make(english, "substituted_list") {
                 tl("sub") { item }
             })
         }

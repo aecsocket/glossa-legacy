@@ -137,20 +137,9 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                 is Template.Substitution -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Substitution<T> -> {
                         val newPath = addPath(template.key)
-                        val lines = args.compute<Argument.Substitution<T>.State>(template.key, factory).backing.value
+                        val value = args.compute<Argument.Substitution<T>.State>(template.key, factory).backing.value
 
-                        val separator = Lines<T>()
-                        val sepPath = addPath(KEY_SEPARATOR, newPath)
-                        template.separator.forEach {
-                            makeTokens(locale, it, args, separator, sepPath)
-                        }
-
-                        lines.forEachIndexed { idx, line ->
-                            res.add(listOf(listOf(Token.Raw(newPath, line))))
-                            if (idx < lines.size - 1) {
-                                res.add(separator.lines)
-                            }
-                        }
+                        res.add(listOf(listOf(Token.Raw(newPath, value))))
                     }
                     null -> {}
                     else -> wrongType(factory, template)

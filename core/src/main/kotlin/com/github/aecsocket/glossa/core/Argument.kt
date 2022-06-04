@@ -65,7 +65,7 @@ sealed interface Argument<T> {
     }
 
     /** For `@key(...)`. */
-    data class Substitution<T>(val value: List<T>): Argument<T> {
+    data class Substitution<T>(val value: T): Argument<T> {
         inner class State : Argument.State<T> {
             override val backing: Substitution<T>
                 get() = this@Substitution
@@ -149,10 +149,10 @@ sealed interface Argument<T> {
         fun rawArg(value: Any) = Raw<T>(value)
 
         /** For `@key(...)`. */
-        fun subArg(value: List<T>) = Substitution(value)
+        fun subArg(value: T) = Substitution(value)
 
-        /** For `@key(...)`. */
-        fun tlArg(value: Localizable<T>) = Substitution(value.localize(withLocale(locale)))
+        /** For `@key[@_()]`. */
+        fun tlArg(value: Localizable<T>) = ArgList(value.localize(this).map { subArg(it) })
 
         /** For `@key[...]`. */
         fun mapArg(value: MapScope<T>.() -> Unit) = buildMap(this, value)
@@ -172,12 +172,12 @@ sealed interface Argument<T> {
         fun raw(key: String, value: () -> Any) = arg(key, Factory.Raw { rawArg(value()) })
 
         /** For `@key(...)`. */
-        fun sub(key: String, value: () -> List<T>) = arg(key, Factory.Substitution { subArg(value()) })
-
-        /** For `@key(...)`. */
-        fun tl(key: String, value: () -> Localizable<T>) = arg(key, Factory.Substitution { tlArg(value()) })
+        fun sub(key: String, value: () -> T) = arg(key, Factory.Substitution { subArg(value()) })
 
         // use a SAM constructor here because we need to provide a type for Factory's A
+        /** For `@key[@_()]`. */
+        fun tl(key: String, value: () -> Localizable<T>) = arg(key, Factory.Scoped { tlArg(value()) })
+
         /** For `@key[...]`. */
         fun map(key: String, value: MapScope<T>.() -> Unit) = arg(key, Factory.Scoped { mapArg(value) })
 
@@ -196,7 +196,7 @@ sealed interface Argument<T> {
         fun raw(value: Any) = arg(rawArg(value))
 
         /** For `@key(...)`. */
-        fun sub(value: List<T>) = arg(subArg(value))
+        fun sub(value: T) = arg(subArg(value))
 
         /** For `@key(...)`. */
         fun tl(value: Localizable<T>) = arg(tlArg(value))
