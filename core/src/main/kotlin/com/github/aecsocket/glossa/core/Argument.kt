@@ -33,24 +33,27 @@ sealed interface Argument<T> {
         fun create(): Argument<T>
 
         /** For `@key{...}`. */
-        fun interface Raw<T> : Factory<T> {
+        class Raw<T>(private val factory: () -> Argument.Raw<T>) : Factory<T> {
             override val name: String
                 get() = "raw"
-            override fun create(): Argument.Raw<T>
+
+            override fun create() = factory()
         }
 
         /** For `@key(...)`. */
-        fun interface Substitution<T> : Factory<T> {
+        class Substitution<T>(private val factory: () -> Argument.Substitution<T>) : Factory<T> {
             override val name: String
                 get() = "substitution"
-            override fun create(): Argument.Substitution<T>
+
+            override fun create() = factory()
         }
 
         /** For `@key[...]`. */
-        fun interface Scoped<T> : Factory<T> {
+        class Scoped<T>(private val factory: () -> Argument.Scoped<T>) : Factory<T> {
             override val name: String
                 get() = "scoped"
-            override fun create(): Argument.Scoped<T>
+
+            override fun create() = factory()
         }
     }
 
@@ -152,7 +155,10 @@ sealed interface Argument<T> {
         fun subArg(value: T) = Substitution(value)
 
         /** For `@key[@_()]`. */
-        fun tlArg(value: Localizable<T>) = ArgList(value.localize(this).map { subArg(it) })
+        fun subListArg(value: List<T>) = ArgList(value.map { subArg(it) })
+
+        /** For `@key[@_()]`. */
+        fun tlArg(value: Localizable<T>) = subListArg(value.localize(this))
 
         /** For `@key[...]`. */
         fun mapArg(value: MapScope<T>.() -> Unit) = buildMap(this, value)
@@ -176,6 +182,9 @@ sealed interface Argument<T> {
 
         // use a SAM constructor here because we need to provide a type for Factory's A
         /** For `@key[@_()]`. */
+        fun subList(key: String, value: () -> List<T>) = arg(key, Factory.Scoped { subListArg(value()) })
+
+        /** For `@key[@_()]`. */
         fun tl(key: String, value: () -> Localizable<T>) = arg(key, Factory.Scoped { tlArg(value()) })
 
         /** For `@key[...]`. */
@@ -198,7 +207,10 @@ sealed interface Argument<T> {
         /** For `@key(...)`. */
         fun sub(value: T) = arg(subArg(value))
 
-        /** For `@key(...)`. */
+        /** For `@key[@_()]`. */
+        fun subList(value: List<T>) = arg(subListArg(value))
+
+        /** For `@key[@_()]`. */
         fun tl(value: Localizable<T>) = arg(tlArg(value))
 
         /** For `@key[...]`. */

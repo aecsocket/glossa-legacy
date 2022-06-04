@@ -83,7 +83,11 @@ class AdventureI18NBuilder(
 
             fun Component.doStyle(style: Style?): Component = style?.let { applyFallbackStyle(it) } ?: this
 
-            makeTokens(this, locale, data.template, args).lines.map { line ->
+            try {
+                makeTokens(this, locale, data.template, args)
+            } catch (ex: I18NException) {
+                i18nException(key, locale, ex)
+            }.lines.map { line ->
                 val res = text()
                 line.forEach {
                     res.append(when (it) {

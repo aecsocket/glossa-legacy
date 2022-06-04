@@ -238,6 +238,12 @@ class StringI18NTest {
             assertEquals(listOf(
                 "Sub: 'item' | Count: 3"
             ), make(english, "substituted_list") {
+                subList("sub") { item.localize(this) }
+            })
+
+            assertEquals(listOf(
+                "Sub: 'item' | Count: 3"
+            ), make(english, "substituted_list") {
                 tl("sub") { item }
             })
         }

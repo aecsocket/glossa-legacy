@@ -41,6 +41,13 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
     }
 
     /**
+     * Throws a generic exception for failing to translate a key.
+     */
+    protected fun i18nException(key: String, locale: Locale, cause: Throwable? = null): Nothing {
+        throw I18NException("Could not generate translation for $key / ${locale.toLanguageTag()}", cause)
+    }
+
+    /**
      * A partial implementation of an [AbstractI18N] builder.
      */
     abstract class Builder<T>(var locale: Locale) : I18N.Builder<T> {
@@ -102,11 +109,11 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
             res: Lines<T>,
             path: String = ""
         ) {
-            fun wrongType(factory: Argument.Factory<T>, template: Template): Nothing =
-                throw I18NException("Invalid argument factory type ${factory.name} for template type '${template.name}'")
-
             fun addPath(next: String, base: String = path) = if (next == THIS_ARG) base else
                 (if (base.isEmpty()) "" else "$base.") + next
+
+            fun wrongType(factory: Argument.Factory<T>, template: Template, key: String): Nothing =
+                throw I18NException("${addPath(key)}: Invalid argument factory type '${factory.name}' for template type '${template.name}'")
 
             when (template) {
                 is Template.Text -> {
@@ -132,7 +139,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         res.addText(newPath, MessageFormat("{${template.content}}", locale).build(icuArgs))
                     }
                     null -> {}
-                    else -> wrongType(factory, template)
+                    else -> wrongType(factory, template, template.key)
                 }
                 is Template.Substitution -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Substitution<T> -> {
@@ -142,7 +149,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         res.add(listOf(listOf(Token.Raw(newPath, value))))
                     }
                     null -> {}
-                    else -> wrongType(factory, template)
+                    else -> wrongType(factory, template, template.key)
                 }
                 is Template.Scope -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Scoped<T> -> {
@@ -182,7 +189,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         }
                     }
                     null -> {}
-                    else -> wrongType(factory, template)
+                    else -> wrongType(factory, template, template.key)
                 }
             }
         }

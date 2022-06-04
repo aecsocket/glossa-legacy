@@ -17,7 +17,11 @@ class StringI18NBuilder(locale: Locale) : AbstractI18N.Builder<String>(locale) {
             key: String,
             args: Argument.MapScope<String>.() -> Unit
         ) = translation(key, locale)?.let { data ->
-            makeTokens(this, locale, data.template, args).lines.map { line ->
+            try {
+                makeTokens(this, locale, data.template, args)
+            } catch (ex: I18NException) {
+                i18nException(key, locale, ex)
+            }.lines.map { line ->
                 line.joinToString("") { when (it) {
                     is Token.Text -> it.value
                     is Token.Raw -> it.value
