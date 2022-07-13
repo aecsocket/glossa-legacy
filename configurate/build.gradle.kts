@@ -8,9 +8,10 @@ repositories {
 }
 
 dependencies {
-    implementation(projects.glossaAdventure)
+    api(projects.glossaAdventure)
+
     compileOnly(libs.adventureApi)
-    api(libs.configurateCore)
+    compileOnly(libs.configurateCore)
     implementation(libs.configurateExtraKotlin)
     implementation(libs.adventureSerializerConfigurate)
 

@@ -6,7 +6,7 @@ plugins {
 
 allprojects {
     group = "com.github.aecsocket.glossa"
-    version = "0.3.3"
+    version = "0.3.6"
     description = "ICU-based localization library"
 }
 
@@ -17,8 +17,8 @@ repositories {
 
 subprojects {
     apply<JavaLibraryPlugin>()
-    apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.dokka")
 
     publishing {
         publications {
@@ -31,12 +31,6 @@ subprojects {
     tasks {
         test {
             useJUnitPlatform()
-        }
-    }
-
-    java {
-        toolchain {
-            languageVersion.set(JavaLanguageVersion.of(17))
         }
     }
 }

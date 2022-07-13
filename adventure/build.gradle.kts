@@ -10,8 +10,10 @@ repositories {
 dependencies {
     api(projects.glossaCore)
     compileOnly(libs.adventureApi)
-    implementation(libs.adventureTextMiniMessage)
+    compileOnly(libs.adventureTextMiniMessage)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.adventureApi)
     testImplementation(libs.adventureTextSerializerGson)
+    testImplementation(libs.adventureTextMiniMessage)
 }

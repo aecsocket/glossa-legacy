@@ -87,19 +87,19 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
          */
         sealed interface Token<T> {
             /** The path to this token. */
-            val path: String
+            val path: List<String>
 
             /**
              * A token storing text.
              * @param value The text.
              */
-            data class Text<T>(override val path: String, val value: String) : Token<T>
+            data class Text<T>(override val path: List<String>, val value: String) : Token<T>
 
             /**
              * A token storing an existing [T].
              * @param value The [T].
              */
-            data class Raw<T>(override val path: String, val value: T) : Token<T>
+            data class Raw<T>(override val path: List<String>, val value: T) : Token<T>
         }
 
         private fun makeTokens(
@@ -107,13 +107,10 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
             template: Template,
             args: Argument.ArgMap<T>.State,
             res: Lines<T>,
-            path: String = ""
+            path: List<String> = emptyList()
         ) {
-            fun addPath(next: String, base: String = path) = if (next == THIS_ARG) base else
-                (if (base.isEmpty()) "" else "$base.") + next
-
-            fun wrongType(factory: Argument.Factory<T>, template: Template, key: String): Nothing =
-                throw I18NException("${addPath(key)}: Invalid argument factory type '${factory.name}' for template type '${template.name}'")
+            fun wrongType(factory: Argument.Factory<T>, template: Template, path: List<String>): Nothing =
+                throw I18NException("$path: Argument/template type mismatch - argument '${factory.name}', template '${template.name}'")
 
             when (template) {
                 is Template.Text -> {
@@ -124,7 +121,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                 }
                 is Template.Raw -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Raw<T> -> {
-                        val newPath = addPath(template.key)
+                        val newPath = path + template.key
 
                         // build all ICU args
                         val icuArgs = HashMap<String, Any?>()
@@ -139,21 +136,21 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         res.addText(newPath, MessageFormat("{${template.content}}", locale).build(icuArgs))
                     }
                     null -> {}
-                    else -> wrongType(factory, template, template.key)
+                    else -> wrongType(factory, template, path + template.key)
                 }
                 is Template.Substitution -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Substitution<T> -> {
-                        val newPath = addPath(template.key)
+                        val newPath = path + template.key
                         val value = args.compute<Argument.Substitution<T>.State>(template.key, factory).backing.value
 
                         res.add(listOf(listOf(Token.Raw(newPath, value))))
                     }
                     null -> {}
-                    else -> wrongType(factory, template, template.key)
+                    else -> wrongType(factory, template, path + template.key)
                 }
                 is Template.Scope -> when (val factory = args.backing(template.key)) {
                     is Argument.Factory.Scoped<T> -> {
-                        val newPath = addPath(template.key)
+                        val newPath = path + template.key
                         when (val state = args.compute<Argument.State<T>>(template.key, factory)) {
                             is Argument.ArgMap<T>.State -> {
                                 template.content.forEach { child ->
@@ -162,7 +159,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                             }
                             is Argument.ArgList<T>.State -> {
                                 val separator = Lines<T>()
-                                val sepPath = addPath(KEY_SEPARATOR, newPath)
+                                val sepPath = newPath + KEY_SEPARATOR
                                 template.separator.forEach {
                                     makeTokens(locale, it, args, separator, sepPath)
                                 }
@@ -189,7 +186,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                         }
                     }
                     null -> {}
-                    else -> wrongType(factory, template, template.key)
+                    else -> wrongType(factory, template, path + template.key)
                 }
             }
         }
@@ -229,7 +226,7 @@ abstract class AbstractI18N<T, D : AbstractI18N.TranslationData>(
                 }
             }
 
-            fun addText(path: String, value: String) {
+            fun addText(path: List<String>, value: String) {
                 add(value.split('\n').map { listOf(Token.Text(path, it)) })
             }
         }

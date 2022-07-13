@@ -18,7 +18,7 @@ data class I18NFormat(
 ) {
     data class Data(
         val style: Style?,
-        val args: Map<String, Style>
+        val args: Map<List<String>, Style>
     )
 }
 
@@ -69,9 +69,13 @@ class AdventureI18NBuilder(
                 rawFormat?.args ?: emptyMap()
             )
 
-            Data(template, I18NFormat.Data(styles[format.style], format.args.map { (key, value) ->
-                styles[value]?.let { key.joinToString(I18N_SEPARATOR) to it }
-            }.filterNotNull().associate { it }))
+            Data(template, I18NFormat.Data(
+                styles[format.style],
+                format.args
+                    .map { (key, value) -> styles[value]?.let { key to it } }
+                    .filterNotNull()
+                    .associate { it })
+            )
         }
     ) {
         override fun make(
