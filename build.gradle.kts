@@ -6,7 +6,7 @@ plugins {
 
 allprojects {
     group = "com.gitlab.aecsocket.glossa"
-    version = "0.3.6"
+    version = "0.4.0"
     description = "ICU-based localization library"
 }
 
@@ -29,7 +29,7 @@ subprojects {
     publishing {
         repositories {
             maven {
-                url = uri("https://gitlab.com/api/v4/groups/phosphorous/-/packages/maven")
+                url = uri("${System.getenv("CI_API_V4_URL")}/projects/${System.getenv("CI_PROJECT_ID")}/packages/maven")
                 credentials(HttpHeaderCredentials::class) {
                     name = "Job-Token"
                     value = System.getenv("CI_JOB_TOKEN")
