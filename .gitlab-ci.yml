@@ -1,4 +1,4 @@
-image: alpine:latest
+image: gradle:jdk18
 
 variables:
   GRADLE_USER_HOME: "${CI_PROJECT_DIR}/.gradle"

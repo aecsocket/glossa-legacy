@@ -1,9 +1,9 @@
 <div align="center">
 
-# [Glossa](https://aecsocket.gitlab.io/glossa)
+# [Glossa](https://phosphorous.gitlab.io/glossa)
 
 ![version](https://img.shields.io/gitlab/v/release/phosphorous/glossa?sort=semver)
-[![build](https://img.shields.io/gitlab/pipeline-status/phosphorous/glossa?branch=main)](https://gitlab.com/phosphorous/glossa/-/pipelines)
+[![build](https://img.shields.io/gitlab/pipeline-status/phosphorous/glossa?branch=main)](https://gitlab.com/phosphorous/glossa/-/pipelines/latest)
 
 </div>
 
@@ -16,4 +16,4 @@ ICU-based localization library written in Kotlin.
 * Designed around Kotlin
 * Adventure support
 
-### [Quickstart and documentation](https://aecsocket.gitlab.io/glossa)
+### [Quickstart and documentation](https://phosphorous.gitlab.io/glossa)
