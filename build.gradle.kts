@@ -15,12 +15,24 @@ repositories {
     mavenCentral()
 }
 
+kotlin {
+    jvmToolchain {
+        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
 subprojects {
     apply<JavaLibraryPlugin>()
     apply(plugin = "maven-publish")
     apply(plugin = "org.jetbrains.dokka")
 
     tasks {
+        withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            kotlinOptions {
+                jvmTarget = JavaVersion.VERSION_17.toString()
+            }
+        }
+
         test {
             useJUnitPlatform()
         }
