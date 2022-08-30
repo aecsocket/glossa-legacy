@@ -21,7 +21,7 @@ class ATest {
                     value("child", "Child")
                 }
                 section("error") {
-                    value("no_permission", "You do not have permission '<permission>' number = <some_number> (<verbose>blah blah <some_number></verbose>)")
+                    value("no_permission", "Reloaded with <entries>{qt_entries, plural, =0 {no messages.} one {# message:} other {# messages:}}</entries>")
                 }
             }
 
@@ -36,9 +36,7 @@ class ATest {
                 node("error") {
                     style("error")
                     node("no_permission") {
-                        argStyle("permission", "var")
-                        argStyle("verbose", "info")
-                        argTemplate("some_number", "{some_number, number}", "var")
+                        argStyle("entries", "var")
                     }
                 }
             }
@@ -51,8 +49,7 @@ class ATest {
         i18n.safe("section.abc").print()
         i18n.safe("section.child").print()
         i18n.safe("error.no_permission") {
-            raw("permission", text("the.permission"))
-            icu("some_number", 1234.56)
+            icu("qt_entries", 1)
         }.print()
     }
 }

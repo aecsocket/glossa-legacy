@@ -72,7 +72,8 @@ class MiniMessageI18N(
             // we're done with all arguments, format the actual message now
             val resolver = resolverBuilder.build()
             data.lines.map { line ->
-                val comp = miniMessage.deserialize(line, resolver)
+                val text = MessageFormat(line).build(icuArgs)
+                val comp = miniMessage.deserialize(text, resolver)
                 comp.applyFallbackStyle(data.style)
             }
         }
