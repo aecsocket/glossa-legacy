@@ -9,6 +9,7 @@ repositories {
 
 dependencies {
     api(projects.glossaCore)
+    implementation(libs.icu4j)
     compileOnly(libs.adventureApi)
     compileOnly(libs.adventureTextMiniMessage)
 
