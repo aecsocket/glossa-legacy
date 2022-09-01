@@ -54,7 +54,7 @@ class MiniMessageI18N(
             val resolver = resolverBuilder.build()
             data.lines.map { line ->
                 // format ICU args
-                val text = MessageFormat(line).build(args.icu)
+                val text = MessageFormat(line, currentLocale).build(args.icu)
 
                 val comp = miniMessage.deserialize(text, resolver)
                 comp.applyFallbackStyle(data.style)
