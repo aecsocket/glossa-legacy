@@ -3,6 +3,7 @@ package com.gitlab.aecsocket.glossa.adventure
 import com.gitlab.aecsocket.glossa.core.AbstractI18N
 import com.gitlab.aecsocket.glossa.core.I18NArg
 import com.gitlab.aecsocket.glossa.core.I18NArgs
+import com.gitlab.aecsocket.glossa.core.build
 import com.ibm.icu.text.MessageFormat
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
@@ -29,50 +30,32 @@ class MiniMessageI18N(
         val lines: List<String>,
         val style: Style,
         val argStyles: Map<String, Style>,
-        val argTemplates: Map<String, String>,
     )
 
     override fun make(key: String, args: I18NArgs<Component>): List<Component>? {
         return translation(key)?.let { data ->
+            // build tag resolver for MM
             val resolverBuilder = TagResolver.builder()
-
-            fun Component.styled(key: String) = applyFallbackStyle(data.argStyles[key] ?: Style.empty())
-
-            // first build up the resolver to take non-ICU tags
-            args.forEach { (key, arg) ->
-                if (arg is I18NArg.Raw) {
-                    resolverBuilder.tag(key, Tag.selfClosingInserting(arg.value.styled(key)))
-                }
+            // · args passed through API get insertion tags
+            args.subst.forEach { (key, subst) ->
+                resolverBuilder.tag(key, Tag.selfClosingInserting(
+                    data.argStyles[key]?.let { subst.applyFallbackStyle(it) }
+                        ?: subst
+                ))
             }
-
+            // · arg styles passed through format get open/closing tags
             data.argStyles.forEach { (key, style) ->
-                // if we haven't already added an inserting tag for this arg...
-                if (!args.contains(key)) {
+                if (!args.subst.contains(key)) {
                     resolverBuilder.tag(key, Tag.styling { it.merge(style) })
                 }
             }
 
-            // we're ready to parse ICU templates
-            val icuArgs = args
-                .mapNotNull { (key, arg) -> (arg as? I18NArg.ICU)?.let { key to it.value } }
-                .associate { it }
-            val icuResolver = resolverBuilder.build()
-
-            // start parsing them and adding them to the resolver
-            args.forEach { (key, arg) ->
-                if (arg is I18NArg.ICU) {
-                    val content = data.argTemplates[key]?.let { template ->
-                        val text = MessageFormat(template).build(icuArgs)
-                        miniMessage.deserialize(text, icuResolver)
-                    } ?: text("{$key}")
-                    resolverBuilder.tag(key, Tag.selfClosingInserting(content.styled(key)))
-                }
-            }
-
-            // we're done with all arguments, format the actual message now
+            // build final message
             val resolver = resolverBuilder.build()
             data.lines.map { line ->
-                val text = MessageFormat(line).build(icuArgs)
+                // format ICU args
+                val text = MessageFormat(line).build(args.icu)
+
                 val comp = miniMessage.deserialize(text, resolver)
                 comp.applyFallbackStyle(data.style)
             }
@@ -94,7 +77,7 @@ class MiniMessageI18N(
 
         data class FormatNode(
             val style: String?,
-            val argFormats: Map<String, ArgFormat>,
+            val argStyles: Map<String, String>,
             val children: MutableMap<String, FormatNode>,
         ) {
             fun node(key: String) = children[key]
@@ -121,8 +104,6 @@ class MiniMessageI18N(
                 fun style(style: String)
 
                 fun argStyle(key: String, style: String)
-
-                fun argTemplate(key: String, content: String, style: String? = null)
 
                 fun node(key: String, builder: Scope.() -> Unit)
             }
@@ -151,32 +132,21 @@ class MiniMessageI18N(
             buildData { node, path ->
                 // combine styles top-down to create the final style of this message
                 var style = Style.empty()
-                var formatNode = formats
+                var format = formats
                 path.forEach {
-                    formatNode = formatNode.node(it) ?: return@forEach
-                    styles[formatNode.style]?.let { childStyle ->
+                    format = format.node(it) ?: return@forEach
+                    styles[format.style]?.let { childStyle ->
                         style = style.merge(childStyle)
                     }
                 }
 
-                val lines = node.lines
-
-                val argStyles: Map<String, Style> = formatNode.argFormats
-                    .mapNotNull { (key, format) ->
-                        when (format) {
-                            is ArgFormat.Styling -> styles[format.style]
-                            is ArgFormat.Templating -> format.style?.let { styles[it] }
-                        }?.let { key to it }
+                // if a style key is invalid, ignore it
+                val argStyles = format.argStyles
+                    .mapNotNull { (key, styleKey) ->
+                        styles[styleKey]?.let { key to it }
                     }.associate { it }
 
-                val argTemplates: Map<String, String> = formatNode.argFormats
-                    .mapNotNull { (key, format) ->
-                        (format as? ArgFormat.Templating)?.let { templating ->
-                            key to templating.content
-                        }
-                    }.associate { it }
-
-                Data(lines, style, argStyles, argTemplates)
+                Data(node.lines, style, argStyles)
             },
             locale,
             miniMessage,
@@ -186,7 +156,7 @@ class MiniMessageI18N(
 
 fun ((MiniMessageI18N.Builder.FormatNode.Scope) -> Unit).build(): MiniMessageI18N.Builder.FormatNode {
     var mStyle: String? = null
-    val mArgFormats = HashMap<String, MiniMessageI18N.Builder.ArgFormat>()
+    val mArgStyles = HashMap<String, String>()
     val mChildren = HashMap<String, MiniMessageI18N.Builder.FormatNode>()
     invoke(object : MiniMessageI18N.Builder.FormatNode.Scope {
         override fun style(style: String) {
@@ -194,22 +164,12 @@ fun ((MiniMessageI18N.Builder.FormatNode.Scope) -> Unit).build(): MiniMessageI18
         }
 
         override fun argStyle(key: String, style: String) {
-            mArgFormats[key] = MiniMessageI18N.Builder.ArgFormat.Styling(style)
-        }
-
-        override fun argTemplate(key: String, content: String, style: String?) {
-            mArgFormats[key] = MiniMessageI18N.Builder.ArgFormat.Templating(content, style)
+            mArgStyles[key] = style;
         }
 
         override fun node(key: String, builder: MiniMessageI18N.Builder.FormatNode.Scope.() -> Unit) {
             mChildren[key] = builder.build()
         }
     })
-    return MiniMessageI18N.Builder.FormatNode(mStyle, mArgFormats, mChildren)
-}
-
-fun MessageFormat.build(args: Map<String, Any>): String {
-    val res = StringBuffer()
-    format(args, res, FieldPosition(0))
-    return res.toString()
+    return MiniMessageI18N.Builder.FormatNode(mStyle, mArgStyles, mChildren)
 }

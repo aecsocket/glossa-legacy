@@ -2,11 +2,18 @@ package com.gitlab.aecsocket.glossa.core
 
 import com.gitlab.aecsocket.glossa.adventure.MiniMessageI18N
 import com.gitlab.aecsocket.glossa.adventure.ansi
+import com.gitlab.aecsocket.glossa.adventure.load
+import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.minimessage.MiniMessage
+import net.kyori.adventure.text.serializer.ComponentSerializer
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+import org.spongepowered.configurate.ConfigurationOptions
+import org.spongepowered.configurate.hocon.HoconConfigurationLoader
+import java.io.BufferedReader
+import java.io.StringReader
 import java.util.Locale
 import kotlin.test.Test
 
@@ -21,7 +28,8 @@ class ATest {
                     value("child", "Child")
                 }
                 section("error") {
-                    value("no_permission", "Reloaded with <entries>{qt_entries, plural, =0 {no messages.} one {# message:} other {# messages:}}</entries>")
+                    value("no_permission",
+                        "Reloaded with {entries, plural, =0 {no messages.} one {<entries>#</entries> message:} other {<entries>#</entries> messages:}}")
                 }
             }
 
@@ -33,6 +41,9 @@ class ATest {
                 node("section") {
                     node("child") { style("info") }
                 }
+            }
+
+            format {
                 node("error") {
                     style("error")
                     node("no_permission") {
@@ -49,7 +60,34 @@ class ATest {
         i18n.safe("section.abc").print()
         i18n.safe("section.child").print()
         i18n.safe("error.no_permission") {
-            icu("qt_entries", 1)
+            icu("entries", 4)
+        }.print()
+
+        val i18n2 = MiniMessageI18N.Builder().apply {
+            load(HoconConfigurationLoader.builder().source { BufferedReader(StringReader("""
+                styles: {
+                  info: { color: "gray" }
+                  var: { color: "white" }
+                  error: { color: "red" }
+                }
+                formats: {
+                  message: {
+                    style: "info"
+                    -: {
+                      arg1: "var"
+                      styled: "error"
+                    }
+                  }
+                }
+                en-US: {
+                  message: "Hello world <arg1> and <styled>some styled</styled> text with ICU num <styled>{num, number}</styled>"
+                }
+            """.trimIndent())) }.build())
+        }.build(Locale.US, MiniMessage.miniMessage())
+
+        i18n2.safe("message") {
+            subst("arg1", text("Arg1"))
+            icu("num", 1234.56)
         }.print()
     }
 }

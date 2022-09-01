@@ -38,7 +38,7 @@ sealed interface TranslationNode {
         override val children: Map<String, TranslationNode>,
     ) : Container {
         init {
-            children.keys.forEach { Keys.validate(it) }
+            children.keys.forEach { I18NKeys.validate(it) }
         }
 
         override fun plus(other: TranslationNode): Container {
@@ -51,7 +51,7 @@ sealed interface TranslationNode {
         override val children: Map<String, TranslationNode>,
     ) : Container {
         init {
-            children.keys.forEach { Keys.validate(it) }
+            children.keys.forEach { I18NKeys.validate(it) }
         }
 
         override fun plus(other: TranslationNode): Root {
