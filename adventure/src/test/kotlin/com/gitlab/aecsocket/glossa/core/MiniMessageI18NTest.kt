@@ -2,12 +2,16 @@ package com.gitlab.aecsocket.glossa.core
 
 import com.gitlab.aecsocket.glossa.adventure.MiniMessageI18N
 import com.gitlab.aecsocket.glossa.adventure.ansi
+import com.gitlab.aecsocket.glossa.adventure.load
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+import org.spongepowered.configurate.hocon.HoconConfigurationLoader
+import java.io.BufferedReader
+import java.io.StringReader
 import java.util.Date
 import java.util.Locale
 import kotlin.test.Test
@@ -55,12 +59,17 @@ class MiniMessageI18NTest {
                 }
                 value("with_placeholders", "Red subst arg: <subst_arg> | Blue ICU arg: <icu_arg>{icu_arg}</icu_arg>")
             }
+            value("store_item", "[ID {id} cost {cost, number}]")
         }
 
         translation(de) {
             value("locale_message", "DE message")
         }
     }.build(us, MiniMessage.miniMessage())
+
+    fun List<Component>.print() = forEach {
+        println(it.ansi())
+    }
 
     fun assertSame(expected: List<Component>, actual: List<Component>?) {
         assertNotNull(actual)
@@ -78,10 +87,6 @@ class MiniMessageI18NTest {
         }
     }
 
-    fun List<Component>.print() = forEach {
-        println(it.ansi())
-    }
-
     @Test
     fun message() {
         val i18n = MiniMessageI18N.Builder().apply {
@@ -96,13 +101,19 @@ class MiniMessageI18NTest {
             }
 
             translation(us) {
+                value("list_separator", ", ")
                 value("with_placeholders", "Red subst arg: <subst_arg> | Blue ICU arg: <icu_arg>{icu_arg}</icu_arg>")
+                value("a_list", "List: <list>")
             }
         }.build(us, MiniMessage.miniMessage())
 
         i18n.safe("with_placeholders") {
             subst("subst_arg", text("Subst"))
             icu("icu_arg", "ICU")
+        }.print()
+
+        i18n.safe("a_list") {
+            list("list", text("One", RED), text("Two", BLUE))
         }.print()
     }
 
@@ -261,6 +272,90 @@ class MiniMessageI18NTest {
         ), i18n.make("formatted.with_placeholders") {
             subst("subst_arg", text("Subst"))
             icu("icu_arg", "ICU")
+        })
+    }
+
+    @Test
+    fun testLocalizable() {
+        val i18n = i18n()
+
+        data class StoreItem(
+            val id: Int,
+            val cost: Int
+        ) : Localizable<Component> {
+            override fun localize(i18n: I18N<Component>) = i18n.safeLine("store_item") {
+                icu("id", id)
+                icu("cost", cost)
+            }
+        }
+
+        val item1 = StoreItem(1, 100)
+        val item2 = StoreItem(2, 200)
+
+        assertSame(listOf(
+            text("Substituted argument: [ID 1 cost 100]")
+        ), i18n.make("with_subst_arg") {
+            subst("subst_arg", item1)
+        })
+
+        assertSame(listOf(
+            text("Substituted argument: [ID 2 cost 200]")
+        ), i18n.make("with_subst_arg") {
+            subst("subst_arg", item2)
+        })
+    }
+
+    @Test
+    fun testConfigurate() {
+        val config = """
+            styles: {
+              info: { color: "gray" }
+              var: { color: "white" }
+              error: { color: "red" }
+            }
+            formats: {
+              "message": "info"
+              "placeholders": [ "info", {
+                subst_arg: "var"
+              }]
+              "error": "error"
+              "error.no_permission": {
+                permission: "var"
+              }
+            }
+            en-US: {
+              message: "Basic message"
+              placeholders: "Message with substitution [ <subst_arg> ]"
+              error: {
+                no_permission: "You do not have permission node <permission>!"
+              }
+            }
+        """.trimIndent()
+
+        val i18n = MiniMessageI18N.Builder().apply {
+            load(HoconConfigurationLoader.builder()
+                .source { BufferedReader(StringReader(config)) }
+                .build())
+        }.build(us, MiniMessage.miniMessage())
+
+        assertSame(listOf(
+            text("Basic message", GRAY)
+        ), i18n.make("message"))
+
+        assertSame(listOf(
+            text("Message with substitution [ ", GRAY)
+                .append(text("Subst arg", WHITE))
+                .append(text(" ]"))
+        ), i18n.make("placeholders") {
+            subst("subst_arg", text("Subst arg"))
+        })
+
+        assertSame(listOf(
+            text("You do not have permission node ", RED)
+                .append(text("some.permission", WHITE))
+                .append(text("!"))
+        ), i18n.make("error.no_permission") {
+            subst("permission", text("some.permission"))
         })
     }
 }

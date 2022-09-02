@@ -4,7 +4,7 @@ import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-private const val PATH_SEPARATOR = "."
+const val PATH_SEPARATOR = "."
 
 abstract class AbstractI18N<T, D>(
     val translations: Map<String, Map<Locale, D>>,

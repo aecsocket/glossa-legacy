@@ -12,58 +12,50 @@ import org.spongepowered.configurate.serialize.SerializationException
 private const val STYLES = "styles"
 private const val FORMATS = "formats"
 
-private const val STYLE = "style"
-private const val ARG_STYLES = "-"
-
 private val configOptions = ConfigurationOptions.defaults()
     .serializers { it.registerAll(ConfigurateComponentSerializer.configurate().serializers()) }
+
+fun MiniMessageI18N.Builder.addStyles(node: ConfigurationNode) {
+    node.get<Map<String, Style>>()?.forEach { (key, style) ->
+        style(key, style)
+    }
+}
 
 fun MiniMessageI18N.Builder.addFormats(node: ConfigurationNode) {
     val type = MiniMessageI18N.Builder.FormatNode::class.java
 
-    fun buildChildren(node: ConfigurationNode): MutableMap<String, MiniMessageI18N.Builder.FormatNode> {
-        val res = HashMap<String, MiniMessageI18N.Builder.FormatNode>()
-        node.childrenMap().forEach { (rawKey, child) ->
-            val key = try {
-                I18NKeys.validate(rawKey.toString())
+    val rootFormat = MiniMessageI18N.Builder.FormatNode(null, HashMap(), HashMap())
+    node.childrenMap().forEach { (rawKey, child) ->
+        val path = rawKey.toString().split(PATH_SEPARATOR).map {
+            try {
+                I18NKeys.validate(it)
             } catch (ex: KeyValidationException) {
                 throw SerializationException(child, type, "Invalid key", ex)
             }
-
-            res[key] = if (child.isMap) {
-                if (child.hasChild(ARG_STYLES)) {
-                    // arg styles, style?
-                    MiniMessageI18N.Builder.FormatNode(
-                        child.node(STYLE).get<String>(),
-                        child.node(ARG_STYLES).force<HashMap<String, String>>(),
-                        HashMap(),
-                    )
-                } else {
-                    // children
-                    MiniMessageI18N.Builder.FormatNode(null, emptyMap(), buildChildren(child))
-                }
-            } else if (child.isList) {
-                // style, children
-                val list = child.forceList(type, "style", "children")
-                val style = list[0].force<String>()
-                val children = buildChildren(list[1])
-                MiniMessageI18N.Builder.FormatNode(style, emptyMap(), children)
-            } else {
-                // style
-                MiniMessageI18N.Builder.FormatNode(child.force<String>(), emptyMap(), HashMap())
-            }
         }
-        return res
+
+        fun argStylesOf(node: ConfigurationNode) = node.childrenMap()
+            .map { (key, style) -> key.toString() to style.force<String>() }
+            .associate { it }
+            .toMutableMap()
+
+        val format = rootFormat.forceNode(path)
+        if (child.isMap) {
+            format.argStyles = argStylesOf(child)
+        } else if (child.isList) {
+            val list = child.forceList(type, "style", "arg_styles")
+            format.style = list[0].force()
+            format.argStyles = argStylesOf(list[1])
+        } else {
+            format.style = child.force()
+        }
     }
 
-    format(MiniMessageI18N.Builder.FormatNode(null, emptyMap(), buildChildren(node)))
+    format(rootFormat)
 }
 
-fun MiniMessageI18N.Builder.fromNode(node: ConfigurationNode) {
-    node.node(STYLES).get<Map<String, Style>>()?.forEach { (key, style) ->
-        style(key, style)
-    }
-
+fun MiniMessageI18N.Builder.addFromNode(node: ConfigurationNode) {
+    addStyles(node.node(STYLES))
     addFormats(node.node(FORMATS))
 
     val tlNode = node.copy().apply {
@@ -76,5 +68,5 @@ fun MiniMessageI18N.Builder.fromNode(node: ConfigurationNode) {
 
 fun MiniMessageI18N.Builder.load(loader: ConfigurationLoader<*>) {
     val node = loader.load(configOptions)
-    fromNode(node)
+    addFromNode(node)
 }

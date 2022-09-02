@@ -4,12 +4,6 @@ import java.util.Locale
 
 private const val LIST_SEPARATOR = "list_separator"
 
-sealed interface I18NArg<T> {
-    data class ICU<T>(val value: Any) : I18NArg<T>
-
-    data class Raw<T>(val value: T) : I18NArg<T>
-}
-
 data class I18NArgs<T>(
     val subst: Map<String, T>,
     val icu: Map<String, Any>,
@@ -27,12 +21,16 @@ data class I18NArgs<T>(
             subst[key] = value
         }
 
+        fun subst(key: String, item: Localizable<T>) {
+            subst[key] = item.localize(this)
+        }
+
         fun icu(key: String, value: Any) {
             icu[key] = value
         }
 
         fun list(key: String, values: Iterable<T>) {
-            subst[key] = values.join(make(LIST_SEPARATOR)?.join(empty) ?: empty)
+            subst[key] = values.join(makeLine(LIST_SEPARATOR) ?: empty)
         }
 
         fun list(key: String, vararg values: T) = list(key, values.asIterable())
@@ -44,15 +42,27 @@ data class I18NArgs<T>(
 interface I18N<T> {
     fun make(key: String, args: I18NArgs<T>): List<T>?
 
+    fun makeLine(key: String, args: I18NArgs<T>) =
+        make(key, args)?.join(empty)
+
     fun make(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}): List<T>? {
         return make(key, I18NArgs.Scope(this).apply(args).build())
     }
 
+    fun makeLine(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}) =
+        make(key, args)?.join(empty)
+
     fun safe(key: String, args: I18NArgs<T>): List<T>
+
+    fun safeLine(key: String, args: I18NArgs<T>) =
+        safe(key, args).join(empty)
 
     fun safe(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}): List<T> {
         return safe(key, I18NArgs.Scope(this).apply(args).build())
     }
+
+    fun safeLine(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}) =
+        safe(key, args).join(empty)
 
     fun withLocale(locale: Locale): I18N<T>
 

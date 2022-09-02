@@ -1,7 +1,6 @@
 package com.gitlab.aecsocket.glossa.adventure
 
 import com.gitlab.aecsocket.glossa.core.AbstractI18N
-import com.gitlab.aecsocket.glossa.core.I18NArg
 import com.gitlab.aecsocket.glossa.core.I18NArgs
 import com.gitlab.aecsocket.glossa.core.build
 import com.ibm.icu.text.MessageFormat
@@ -11,7 +10,6 @@ import net.kyori.adventure.text.format.Style
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.tag.Tag
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
-import java.text.FieldPosition
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -76,9 +74,9 @@ class MiniMessageI18N(
         }
 
         data class FormatNode(
-            val style: String?,
-            val argStyles: Map<String, String>,
-            val children: MutableMap<String, FormatNode>,
+            var style: String? = null,
+            var argStyles: MutableMap<String, String> = HashMap(),
+            val children: MutableMap<String, FormatNode> = HashMap(),
         ) {
             fun node(key: String) = children[key]
 
@@ -89,6 +87,16 @@ class MiniMessageI18N(
             }
 
             fun node(vararg path: String) = node(path.asIterable())
+
+            fun forceNode(path: Iterable<String>): FormatNode {
+                var cur = this
+                path.forEach {
+                    cur = cur.node(it) ?: FormatNode().also { node -> cur.children[it] = node }
+                }
+                return cur
+            }
+
+            fun forceNode(vararg path: String) = forceNode(path.asIterable())
 
             fun mergeFrom(other: FormatNode) {
                 other.children.forEach { (key, node) ->
@@ -110,7 +118,7 @@ class MiniMessageI18N(
         }
 
         private val styles = HashMap<String, Style>()
-        private val formats = FormatNode(null, emptyMap(), HashMap())
+        private val formats = FormatNode()
 
         fun style(key: String, style: Style) {
             styles[key] = style
@@ -164,7 +172,7 @@ fun ((MiniMessageI18N.Builder.FormatNode.Scope) -> Unit).build(): MiniMessageI18
         }
 
         override fun argStyle(key: String, style: String) {
-            mArgStyles[key] = style;
+            mArgStyles[key] = style
         }
 
         override fun node(key: String, builder: MiniMessageI18N.Builder.FormatNode.Scope.() -> Unit) {
