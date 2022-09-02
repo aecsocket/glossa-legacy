@@ -25,9 +25,17 @@ fun ConfigurationNode.forceList(type: Type, vararg args: String): List<Configura
     throw SerializationException(this, type, "Field must be expressed as list")
 }
 
+/**
+ * Registers all translations under this node.
+ *
+ * The node passed must be a map, and each key under this node represents a locale obtained
+ * by [Locale.forLanguageTag]. Each child under this node forms a [TranslationNode.Root].
+ *
+ * @param visitor An operation to apply for each [TranslationNode.Value] created.
+ */
 fun AbstractI18N.Builder<*, *>.addTranslations(
     node: ConfigurationNode,
-    visitor: (List<String>, ConfigurationNode) -> Unit = { _, _ -> }
+    visitor: (TranslationNode.Value, ConfigurationNode) -> Unit = { _, _ -> }
 ) {
     val type = TranslationNode.Root::class.java
     if (!node.isMap) throw SerializationException(node, type, "Translations must be expressed as map")
@@ -53,9 +61,9 @@ fun AbstractI18N.Builder<*, *>.addTranslations(
                     val lines: List<String> = (if (child.isList) child.force()
                     else listOf(child.force<String>()))
 
-                    visitor(lines, child)
-
-                    children[key] = TranslationNode.Value(lines)
+                    val leaf = TranslationNode.Value(lines)
+                    visitor(leaf, child)
+                    children[key] = leaf
                 }
             }
             return children

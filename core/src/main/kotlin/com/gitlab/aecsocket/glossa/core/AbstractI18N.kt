@@ -4,6 +4,9 @@ import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
+/**
+ * The separator for paths in message keys.
+ */
 const val PATH_SEPARATOR = "."
 
 abstract class AbstractI18N<T, D>(
@@ -11,6 +14,12 @@ abstract class AbstractI18N<T, D>(
     val locale: Locale,
     val currentLocale: Locale = locale,
 ) : I18N<T> {
+    /**
+     * Gets a translation by its key. Uses this priority of locales:
+     * * [currentLocale]
+     * * [locale]
+     * * [Locale.ROOT]
+     */
     protected fun translation(key: String): D? {
         return translations[key]?.let {
             it[currentLocale] ?: it[locale] ?: it[Locale.ROOT]

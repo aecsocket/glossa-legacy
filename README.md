@@ -14,8 +14,8 @@ ICU-based localization library written in Kotlin.
 # Features
 
 * ICU under the hood
-* Scopes
+* MiniMessage tag-based
 * Designed around Kotlin
-* Adventure support
+* Configurate support
 
 ### [Quickstart and documentation](https://phosphorous.gitlab.io/glossa)
