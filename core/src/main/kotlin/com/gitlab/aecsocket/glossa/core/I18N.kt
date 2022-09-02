@@ -55,7 +55,7 @@ data class I18NArgs<T>(
          * Adds a substitution argument from a list of [T] values.
         */
         fun list(key: String, values: Iterable<T>) {
-            subst[key] = values.join(makeLine(LIST_SEPARATOR) ?: empty)
+            subst[key] = values.join(makeOne(LIST_SEPARATOR) ?: empty)
         }
 
         /**
@@ -83,10 +83,10 @@ interface I18N<T> {
     fun make(key: String, args: I18NArgs<T>): List<T>?
 
     /**
-     * Creates a single line from a key and arguments if the message exists.
+     * Creates a single element message from a key and arguments if the message exists.
      */
-    fun makeLine(key: String, args: I18NArgs<T>) =
-        make(key, args)?.join(empty)
+    fun makeOne(key: String, args: I18NArgs<T>, separator: T = empty) =
+        make(key, args)?.join(separator)
 
     /**
      * Creates a list of lines from a key and arguments if the message exists.
@@ -96,10 +96,10 @@ interface I18N<T> {
     }
 
     /**
-     * Creates a single line from a key and arguments if the message exists.
+     * Creates a single element message from a key and arguments if the message exists.
      */
-    fun makeLine(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}) =
-        make(key, args)?.join(empty)
+    fun makeOne(key: String, separator: T = empty, args: I18NArgs.Scope<T>.() -> Unit = {}) =
+        make(key, args)?.join(separator)
 
     /**
      * Creates a list of lines from a key and arguments if it exists, otherwise a fallback message.
@@ -107,10 +107,10 @@ interface I18N<T> {
     fun safe(key: String, args: I18NArgs<T>): List<T>
 
     /**
-     * Creates a single line from a key and arguments if it exists, otherwise a fallback message.
+     * Creates a single element message from a key and arguments if it exists, otherwise a fallback message.
      */
-    fun safeLine(key: String, args: I18NArgs<T>) =
-        safe(key, args).join(empty)
+    fun safeOne(key: String, args: I18NArgs<T>, separator: T = empty) =
+        safe(key, args).join(separator)
 
     /**
      * Creates a list of lines from a key and arguments if it exists, otherwise a fallback message.
@@ -120,10 +120,10 @@ interface I18N<T> {
     }
 
     /**
-     * Creates a single line from a key and arguments if it exists, otherwise a fallback message.
+     * Creates a single element message from a key and arguments if it exists, otherwise a fallback message.
      */
-    fun safeLine(key: String, args: I18NArgs.Scope<T>.() -> Unit = {}) =
-        safe(key, args).join(empty)
+    fun safeOne(key: String, separator: T = empty, args: I18NArgs.Scope<T>.() -> Unit = {}) =
+        safe(key, args).join(separator)
 
     /**
      * Creates a new I18N service which uses the specified locale.

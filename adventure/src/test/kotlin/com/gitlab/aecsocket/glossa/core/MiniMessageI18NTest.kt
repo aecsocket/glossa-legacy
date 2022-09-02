@@ -283,7 +283,7 @@ class MiniMessageI18NTest {
             val id: Int,
             val cost: Int
         ) : Localizable<Component> {
-            override fun localize(i18n: I18N<Component>) = i18n.safeLine("store_item") {
+            override fun localize(i18n: I18N<Component>) = i18n.safeOne("store_item") {
                 icu("id", id)
                 icu("cost", cost)
             }

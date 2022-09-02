@@ -78,6 +78,10 @@ class MiniMessageI18N(
             var argStyles: MutableMap<String, String> = HashMap(),
             val children: MutableMap<String, FormatNode> = HashMap(),
         ) {
+            val size: Int get() = children.size
+
+            fun sizeOfAll(): Int = size + children.values.sumOf { it.sizeOfAll() }
+
             fun node(key: String) = children[key]
 
             fun node(path: Iterable<String>): FormatNode? {
@@ -117,8 +121,8 @@ class MiniMessageI18N(
             }
         }
 
-        private val styles = HashMap<String, Style>()
-        private val formats = FormatNode()
+        val styles = HashMap<String, Style>()
+        val formats = FormatNode()
 
         fun style(key: String, style: Style) {
             styles[key] = style

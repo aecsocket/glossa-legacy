@@ -27,7 +27,7 @@ abstract class AbstractI18N<T, D>(
     }
 
     abstract class Builder<T, D> {
-        protected val translations = ArrayList<TranslationNode.Root>()
+        val translations = ArrayList<TranslationNode.Root>()
 
         fun translation(node: TranslationNode.Root) {
             translations.add(node)
