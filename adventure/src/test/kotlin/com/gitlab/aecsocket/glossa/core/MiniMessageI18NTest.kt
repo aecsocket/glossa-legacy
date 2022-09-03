@@ -9,14 +9,14 @@ import net.kyori.adventure.text.format.NamedTextColor.*
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Test
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader
 import java.io.BufferedReader
 import java.io.StringReader
 import java.util.Date
 import java.util.Locale
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 class MiniMessageI18NTest {
     val us = Locale.US
@@ -76,13 +76,13 @@ class MiniMessageI18NTest {
         try {
             assertEquals(
                 expected.map { serializer.serialize(it) },
-                actual.map { serializer.serialize(it) }
+                actual?.map { serializer.serialize(it) }
             )
         } catch (ex: Throwable) {
             println("-- Expected:")
             expected.print()
             println("-- Actual:")
-            actual.print()
+            actual?.print()
             throw ex
         }
     }

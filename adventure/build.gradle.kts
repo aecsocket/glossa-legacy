@@ -16,7 +16,8 @@ dependencies {
     compileOnly(libs.configurateCore)
     compileOnly(libs.configurateExtraKotlin)
 
-    testImplementation(kotlin("test"))
+    testImplementation(platform("org.junit:junit-bom:5.9.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation(libs.adventureApi)
     testImplementation(libs.adventureTextSerializerGson)
     testImplementation(libs.adventureTextMiniMessage)
