@@ -325,6 +325,10 @@ class MiniMessageI18NTest {
             }
             en-US: {
               message: "Basic message"
+              multiline: [
+                "Line one"
+                "Line two"
+              ]
               placeholders: "Message with substitution [ <subst_arg> ]"
               error: {
                 no_permission: "You do not have permission node <permission>!"
@@ -341,6 +345,11 @@ class MiniMessageI18NTest {
         assertSame(listOf(
             text("Basic message", GRAY)
         ), i18n.make("message"))
+
+        assertSame(listOf(
+            text("Line one"),
+            text("Line two")
+        ), i18n.make("multiline"))
 
         assertSame(listOf(
             text("Message with substitution [ ", GRAY)

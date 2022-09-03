@@ -58,7 +58,9 @@ fun AbstractI18N.Builder<*, *>.addTranslations(
                 if (child.isMap) {
                     children[key] = TranslationNode.Section(buildChildren(child))
                 } else {
-                    val lines: List<String> = (if (child.isList) child.force()
+                    // use MutableList because otherwise the type param becomes `? extends String` not `String`
+                    // this breaks the deserializer
+                    val lines: List<String> = (if (child.isList) child.force<MutableList<String>>()
                     else listOf(child.force<String>()))
 
                     val leaf = TranslationNode.Value(lines)
