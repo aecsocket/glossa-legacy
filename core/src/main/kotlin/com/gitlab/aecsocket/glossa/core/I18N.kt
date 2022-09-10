@@ -11,8 +11,8 @@ private const val LIST_SEPARATOR = "list_separator"
  * @param icu The ICU arguments.
  */
 data class I18NArgs<T>(
-    val subst: Map<String, T>,
-    val icu: Map<String, Any>,
+    val subst: Map<String, T> = emptyMap(),
+    val icu: Map<String, Any> = emptyMap(),
 ) {
     /**
      * Merges this set of arguments with another.
@@ -29,6 +29,14 @@ data class I18NArgs<T>(
     class Scope<T>(override val i18n: I18N<T>) : ForwardingI18N<T> {
         private val subst = HashMap<String, T>()
         private val icu = HashMap<String, Any>()
+
+        /**
+         * Adds argumnents from another argument object.
+         */
+        fun add(other: I18NArgs<T>) {
+            subst.putAll(other.subst)
+            icu.putAll(other.icu)
+        }
 
         /**
          * Adds a substitution argument.
