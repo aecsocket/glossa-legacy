@@ -38,7 +38,8 @@ fun AbstractI18N.Builder<*, *>.addTranslations(
     visitor: (TranslationNode.Value, ConfigurationNode) -> Unit = { _, _ -> }
 ) {
     val type = TranslationNode.Root::class.java
-    if (!node.isMap) throw SerializationException(node, type, "Translations must be expressed as map")
+    if (!node.isMap)
+        throw SerializationException(node, type, "Translations must be expressed as map")
 
     node.childrenMap().forEach { (localeKey, root) ->
         val locale = if (localeKey == ROOT) Locale.ROOT
@@ -71,6 +72,6 @@ fun AbstractI18N.Builder<*, *>.addTranslations(
             return children
         }
 
-        translation(TranslationNode.Root(locale, buildChildren(root)))
+        translations.add(TranslationNode.Root(locale, buildChildren(root)))
     }
 }

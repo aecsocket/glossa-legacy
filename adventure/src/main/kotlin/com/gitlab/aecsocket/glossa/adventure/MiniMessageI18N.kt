@@ -1,8 +1,6 @@
 package com.gitlab.aecsocket.glossa.adventure
 
-import com.gitlab.aecsocket.glossa.core.AbstractI18N
-import com.gitlab.aecsocket.glossa.core.I18NArgs
-import com.gitlab.aecsocket.glossa.core.build
+import com.gitlab.aecsocket.glossa.core.*
 import com.ibm.icu.text.MessageFormat
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
@@ -13,50 +11,84 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
 import java.util.*
 import kotlin.collections.HashMap
 
-class MiniMessageI18N(
-    translations: Map<String, Map<Locale, Data>>,
-    locale: Locale,
-    val miniMessage: MiniMessage,
-    currentLocale: Locale = locale,
-) : AbstractI18N<Component, MiniMessageI18N.Data>(translations, locale, currentLocale), AdventureI18N {
-    data class Token(
-        val content: String,
-        val style: Style? = null,
-    )
+class KeyStyleNode(val style: String? = null) {
+    val children: MutableMap<String, KeyStyleNode> = HashMap()
 
-    data class Data(
+    fun node(key: String) = children[key]
+
+    fun node(path: Iterable<String>): KeyStyleNode? {
+        var cur = this
+        path.forEach { cur = cur.node(it) ?: return null }
+        return cur
+    }
+
+    fun node(key: String, child: KeyStyleNode) {
+        children[key] = child
+    }
+
+    fun mergeFrom(other: KeyStyleNode) {
+        other.children.forEach { (key, node) ->
+            children[key]?.mergeFrom(node) ?: run {
+                children[key] = node
+            }
+        }
+    }
+
+    fun with(builder: Scope.() -> Unit): KeyStyleNode {
+        val scope = object : Scope {
+            override fun node(key: String, style: String?, builder: Scope.() -> Unit) {
+                children[key] = KeyStyleNode(style).with(builder)
+            }
+        }
+
+        builder(scope)
+        return this
+    }
+
+    interface Scope {
+        fun node(key: String, style: String? = null, builder: Scope.() -> Unit)
+    }
+}
+
+class MiniMessageI18N(
+    translations: Map<String, Map<Locale, TranslationData>>,
+    locale: Locale,
+    private val miniMessage: MiniMessage,
+    private val substitutions: Map<String, Component>,
+    private val styles: Map<String, Style>,
+    currentLocale: Locale = locale,
+) : AbstractI18N<Component, MiniMessageI18N.TranslationData>(translations, locale, currentLocale), AdventureI18N {
+    data class TranslationData(
         val lines: List<String>,
-        val style: Style,
-        val argStyles: Map<String, Style>,
+        val baseStyle: Style
     )
 
     override fun make(key: String, args: I18NArgs<Component>): List<Component>? {
-        return translation(key)?.let { data ->
-            // build tag resolver for MM
-            val resolverBuilder = TagResolver.builder()
-            // · args passed through API get insertion tags
-            args.subst.forEach { (key, subst) ->
-                resolverBuilder.tag(key, Tag.selfClosingInserting(
-                    data.argStyles[key]?.let { subst.applyFallbackStyle(it) }
-                        ?: subst
-                ))
+        val data = translation(key) ?: return null
+
+        val tagResolver = TagResolver.builder().apply {
+            // lowest priority
+
+            // substitutions get insertion tags
+            substitutions.forEach { (key, value) ->
+                tag(key, Tag.selfClosingInserting(value))
             }
-            // · arg styles passed through format get open/closing tags
-            data.argStyles.forEach { (key, style) ->
-                if (!args.subst.contains(key)) {
-                    resolverBuilder.tag(key, Tag.styling { it.merge(style) })
-                }
+            // styles get open/closing tags
+            styles.forEach { (key, style) ->
+                tag(key, Tag.styling { it.merge(style) })
+            }
+            // args passed through API get insertion tags
+            args.subst.forEach { (key, value) ->
+                tag(key, Tag.selfClosingInserting(value))
             }
 
-            // build final message
-            val resolver = resolverBuilder.build()
-            data.lines.map { line ->
-                // format ICU args
-                val text = MessageFormat(line, currentLocale).build(args.icu)
+            // highest priority
+        }.build()
 
-                val comp = miniMessage.deserialize(text, resolver)
-                comp.applyFallbackStyle(data.style)
-            }
+        return data.lines.map { line ->
+            val text = MessageFormat(line, locale).build(args.icu)
+            val component = miniMessage.deserialize(text, tagResolver)
+            component.applyFallbackStyle(data.baseStyle)
         }
     }
 
@@ -64,124 +96,60 @@ class MiniMessageI18N(
         return make(key, args) ?: listOf(text(key))
     }
 
-    override fun withLocale(locale: Locale) = MiniMessageI18N(translations, this.locale, miniMessage, locale)
+    override fun withLocale(locale: Locale) = MiniMessageI18N(
+        translationData, baseLocale,
+        miniMessage, substitutions, styles,
+        locale
+    )
 
-    class Builder : AbstractI18N.Builder<Component, Data>() {
-        sealed interface ArgFormat {
-            data class Styling(val style: String) : ArgFormat
+    class Builder : AbstractI18N.Builder<Component, TranslationData>() {
+        val substitutions: MutableMap<String, String> = HashMap()
+        val styles: MutableMap<String, Style> = HashMap()
+        val keyStyle = KeyStyleNode()
 
-            data class Templating(val content: String, val style: String? = null) : ArgFormat
-        }
+        fun build(locale: Locale, miniMessage: MiniMessage): MiniMessageI18N {
+            val translationData = HashMap<String, MutableMap<Locale, TranslationData>>()
 
-        data class FormatNode(
-            var style: String? = null,
-            var argStyles: MutableMap<String, String> = HashMap(),
-            val children: MutableMap<String, FormatNode> = HashMap(),
-        ) {
-            val size: Int get() = children.size
+            fun makeTranslationData(
+                locale: Locale,
+                node: TranslationNode,
+                keyStyle: KeyStyleNode?,
+                style: Style,
+                path: List<String>
+            ) {
+                val currentStyle = keyStyle?.let {
+                    val childStyle = styles[it.style] ?: return@let null
+                    style.merge(childStyle)
+                } ?: style
 
-            fun sizeOfAll(): Int = size + children.values.sumOf { it.sizeOfAll() }
-
-            fun node(key: String) = children[key]
-
-            fun node(path: Iterable<String>): FormatNode? {
-                var cur = this
-                path.forEach { cur = cur.node(it) ?: return null }
-                return cur
-            }
-
-            fun node(vararg path: String) = node(path.asIterable())
-
-            fun forceNode(path: Iterable<String>): FormatNode {
-                var cur = this
-                path.forEach {
-                    cur = cur.node(it) ?: FormatNode().also { node -> cur.children[it] = node }
-                }
-                return cur
-            }
-
-            fun forceNode(vararg path: String) = forceNode(path.asIterable())
-
-            fun mergeFrom(other: FormatNode) {
-                other.children.forEach { (key, node) ->
-                    // if we already hold a node for this key, keep it (and merge its children)
-                    // else we set the other's node for this key to ourselves
-                    children[key]?.mergeFrom(node) ?: run {
-                        children[key] = node
+                if (node is TranslationNode.Value) {
+                    node.lines.forEachIndexed { idx, line ->
+                        try {
+                            MessageFormat(line).build()
+                        } catch (ex: IllegalArgumentException) {
+                            throw I18NBuildException("Invalid ICU format at $path line ${idx+1}", ex)
+                        }
                     }
+
+                    val key = path.joinToString(PATH_SEPARATOR)
+                    val forKey = translationData.computeIfAbsent(key) { HashMap() }
+                    forKey[locale] = TranslationData(node.lines, currentStyle)
+                }
+
+                node.children.forEach { (key, child) ->
+                    makeTranslationData(locale, child, keyStyle?.node(key), currentStyle, path + key)
                 }
             }
 
-            interface Scope {
-                fun style(style: String)
-
-                fun argStyle(key: String, style: String)
-
-                fun node(key: String, builder: Scope.() -> Unit)
+            translations.forEach { root ->
+                makeTranslationData(root.locale, root, keyStyle, Style.empty(), emptyList())
             }
+
+            val compSubstitutions = substitutions.map { (key, value) ->
+                key to miniMessage.deserialize(value)
+            }.associate { it }
+
+            return MiniMessageI18N(translationData, locale, miniMessage, compSubstitutions, styles)
         }
-
-        val styles = HashMap<String, Style>()
-        val formats = FormatNode()
-
-        fun style(key: String, style: Style) {
-            styles[key] = style
-        }
-
-        fun style(key: String, builder: Style.Builder.() -> Unit) {
-            styles[key] = Style.style(builder)
-        }
-
-        fun format(format: FormatNode) {
-            formats.mergeFrom(format)
-        }
-
-        fun format(builder: FormatNode.Scope.() -> Unit) {
-            formats.mergeFrom(builder.build())
-        }
-
-        fun build(locale: Locale, miniMessage: MiniMessage) = MiniMessageI18N(
-            buildData { node, path ->
-                // combine styles top-down to create the final style of this message
-                var style = Style.empty()
-                var format = formats
-                path.forEach {
-                    format = format.node(it) ?: return@forEach
-                    styles[format.style]?.let { childStyle ->
-                        style = style.merge(childStyle)
-                    }
-                }
-
-                // if a style key is invalid, ignore it
-                val argStyles = format.argStyles
-                    .mapNotNull { (key, styleKey) ->
-                        styles[styleKey]?.let { key to it }
-                    }.associate { it }
-
-                Data(node.lines, style, argStyles)
-            },
-            locale,
-            miniMessage,
-        )
     }
-}
-
-fun ((MiniMessageI18N.Builder.FormatNode.Scope) -> Unit).build(): MiniMessageI18N.Builder.FormatNode {
-    var mStyle: String? = null
-    val mArgStyles = HashMap<String, String>()
-    val mChildren = HashMap<String, MiniMessageI18N.Builder.FormatNode>()
-    invoke(object : MiniMessageI18N.Builder.FormatNode.Scope {
-        override fun style(style: String) {
-            mStyle = style
-        }
-
-        override fun argStyle(key: String, style: String) {
-            mArgStyles[key] = style
-        }
-
-        override fun node(key: String, builder: MiniMessageI18N.Builder.FormatNode.Scope.() -> Unit) {
-            mChildren[key] = builder.build()
-        }
-    })
-    return MiniMessageI18N.Builder.FormatNode(mStyle, mArgStyles, mChildren)
 }

@@ -26,12 +26,14 @@ data class I18NArgs<T>(
      * The DSL scope for building an [I18NArgs] instance.
      * @param T The translation operation resulting type.
      */
-    class Scope<T>(override val i18n: I18N<T>) : ForwardingI18N<T> {
+    class Scope<T>(backing: I18N<T>) : ForwardingI18N<T>(backing) {
         private val subst = HashMap<String, T>()
         private val icu = HashMap<String, Any>()
 
+        override fun withLocale(locale: Locale) = Scope(backing.withLocale(locale))
+
         /**
-         * Adds argumnents from another argument object.
+         * Adds arguments from another argument object.
          */
         fun add(other: I18NArgs<T>) {
             subst.putAll(other.subst)
@@ -152,21 +154,4 @@ interface I18N<T> {
      * A [T] representing a new line.
      */
     val newline: T
-}
-
-/**
- * An I18N which delegates operations to a backing service.
- */
-interface ForwardingI18N<T> : I18N<T> {
-    /**
-     * The backing I18N used for delegating operations to.
-     */
-    val i18n: I18N<T>
-
-    override fun make(key: String, args: I18NArgs<T>) = i18n.make(key, args)
-    override fun safe(key: String, args: I18NArgs<T>) = i18n.safe(key, args)
-    override fun Iterable<T>.join(separator: T) = i18n.run { this@join.join(separator) }
-    override fun withLocale(locale: Locale) = i18n.withLocale(locale)
-    override val empty get() = i18n.empty
-    override val newline get() = i18n.newline
 }

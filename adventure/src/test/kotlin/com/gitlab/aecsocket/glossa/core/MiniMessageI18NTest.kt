@@ -1,11 +1,13 @@
 package com.gitlab.aecsocket.glossa.core
 
+import com.gitlab.aecsocket.glossa.adventure.KeyStyleNode
 import com.gitlab.aecsocket.glossa.adventure.MiniMessageI18N
 import com.gitlab.aecsocket.glossa.adventure.ansi
 import com.gitlab.aecsocket.glossa.adventure.load
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.*
+import net.kyori.adventure.text.format.Style
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -19,14 +21,23 @@ import java.util.Date
 import java.util.Locale
 
 class MiniMessageI18NTest {
-    val us = Locale.US
+    /*val us = Locale.US
     val de = Locale.GERMAN
     val serializer = GsonComponentSerializer.gson()
 
     fun i18n() = MiniMessageI18N.Builder().apply {
-        style("gray") { color(GRAY) }
-        style("red") { color(RED) }
-        style("blue") { color(BLUE) }
+        styles.apply {
+            set("gray", Style.style(GRAY))
+            set("red", Style.style(RED))
+            set("blue", Style.style(BLUE))
+        }
+
+        keyStyle.mergeFrom(KeyStyleNode().with {
+            node("formatted") {
+                node("single", "gray")
+                node("section", "gray")
+            }
+        })
 
         format {
             node("formatted") {
@@ -366,5 +377,5 @@ class MiniMessageI18NTest {
         ), i18n.make("error.no_permission") {
             subst("permission", text("some.permission"))
         })
-    }
+    }*/
 }

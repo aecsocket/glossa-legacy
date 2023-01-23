@@ -2,68 +2,68 @@ package com.gitlab.aecsocket.glossa.adventure
 
 import com.gitlab.aecsocket.glossa.core.*
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
-import net.kyori.adventure.text.format.Style
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.ConfigurationOptions
-import org.spongepowered.configurate.kotlin.extensions.get
 import org.spongepowered.configurate.loader.ConfigurationLoader
 import org.spongepowered.configurate.serialize.SerializationException
 
+private const val SUBSTITUTIONS = "substitutions"
 private const val STYLES = "styles"
-private const val FORMATS = "formats"
+private const val KEY_STYLES = "key_styles"
+private const val TRANSLATIONS = "translations"
 
 private val configOptions = ConfigurationOptions.defaults()
     .serializers { it.registerAll(ConfigurateComponentSerializer.configurate().serializers()) }
 
+fun MiniMessageI18N.Builder.addSubstitutions(node: ConfigurationNode) {
+    fun add(node: ConfigurationNode, path: List<String>) {
+        node.childrenMap().forEach { (key, child) ->
+            if (child.isMap) {
+                add(child, path + key.toString())
+            } else {
+                substitutions[(path + key).joinToString(PATH_SEPARATOR)] = child.force()
+            }
+        }
+    }
+
+    add(node, emptyList())
+}
+
 fun MiniMessageI18N.Builder.addStyles(node: ConfigurationNode) {
-    node.get<Map<String, Style>>()?.forEach { (key, style) ->
-        style(key, style)
+    node.childrenMap().forEach { (key, child) ->
+        styles[key.toString()] = child.force()
     }
 }
 
-fun MiniMessageI18N.Builder.addFormats(node: ConfigurationNode) {
-    val type = MiniMessageI18N.Builder.FormatNode::class.java
-
-    val rootFormat = MiniMessageI18N.Builder.FormatNode(null, HashMap(), HashMap())
-    node.childrenMap().forEach { (rawKey, child) ->
-        val path = rawKey.toString().split(PATH_SEPARATOR).map {
-            try {
-                I18NKeys.validate(it)
+fun MiniMessageI18N.Builder.addKeyStyles(node: ConfigurationNode) {
+    fun add(node: ConfigurationNode, style: KeyStyleNode) {
+        node.childrenMap().forEach { (rawKey, child) ->
+            val key = try {
+                I18NKeys.validate(rawKey.toString())
             } catch (ex: KeyValidationException) {
-                throw SerializationException(child, type, "Invalid key", ex)
+                throw SerializationException(child, KeyStyleNode::class.java, "Invalid key", ex)
             }
-        }
 
-        fun argStylesOf(node: ConfigurationNode) = node.childrenMap()
-            .map { (key, style) -> key.toString() to style.force<String>() }
-            .associate { it }
-            .toMutableMap()
-
-        val format = rootFormat.forceNode(path)
-        if (child.isMap) {
-            format.argStyles = argStylesOf(child)
-        } else if (child.isList) {
-            val list = child.forceList(type, "style", "arg_styles")
-            format.style = list[0].force()
-            format.argStyles = argStylesOf(list[1])
-        } else {
-            format.style = child.force()
+            if (child.isMap) {
+                val newStyle = KeyStyleNode()
+                style.node(key, newStyle)
+                add(child, newStyle)
+            } else {
+                style.node(rawKey.toString(), KeyStyleNode(child.force()))
+            }
         }
     }
 
-    format(rootFormat)
+    val root = KeyStyleNode()
+    add(node, root)
+    keyStyle.mergeFrom(root)
 }
 
 fun MiniMessageI18N.Builder.addFromNode(node: ConfigurationNode) {
+    addSubstitutions(node.node(SUBSTITUTIONS))
     addStyles(node.node(STYLES))
-    addFormats(node.node(FORMATS))
-
-    val tlNode = node.copy().apply {
-        removeChild(STYLES)
-        removeChild(FORMATS)
-    }
-
-    addTranslations(tlNode)
+    addKeyStyles(node.node(KEY_STYLES))
+    addTranslations(node.node(TRANSLATIONS))
 }
 
 fun MiniMessageI18N.Builder.load(loader: ConfigurationLoader<*>) {
