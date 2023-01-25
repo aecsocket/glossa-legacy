@@ -1,12 +1,3 @@
-plugins {
-    kotlin("jvm")
-}
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
 dependencies {
     api(projects.glossaCore)
     implementation(libs.icu4j)

@@ -1,4 +1,4 @@
-package com.gitlab.aecsocket.glossa.adventure
+package io.gitlab.aecsocket.glossa.adventure
 
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.ComponentLike

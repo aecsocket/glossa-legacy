@@ -1,7 +1,7 @@
-package com.gitlab.aecsocket.glossa.adventure
+package io.gitlab.aecsocket.glossa.adventure
 
-import com.gitlab.aecsocket.glossa.core.*
 import com.ibm.icu.text.MessageFormat
+import io.gitlab.aecsocket.glossa.core.*
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.Style
@@ -46,7 +46,7 @@ class KeyStyleNode(val style: String? = null) {
     }
 
     interface Scope {
-        fun node(key: String, style: String? = null, builder: Scope.() -> Unit)
+        fun node(key: String, style: String? = null, builder: Scope.() -> Unit = {})
     }
 }
 

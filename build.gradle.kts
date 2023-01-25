@@ -1,36 +1,30 @@
 plugins {
     kotlin("jvm")
-    id("maven-publish")
     id("org.jetbrains.dokka")
+    id("maven-publish")
 }
 
 allprojects {
-    group = "com.gitlab.aecsocket.glossa"
+    group = "io.gitlab.aecsocket"
     version = "0.6.0"
     description = "ICU-based localization library"
 }
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-kotlin {
-    jvmToolchain(17)
-}
-
 subprojects {
-    apply<JavaLibraryPlugin>()
-    apply(plugin = "maven-publish")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jetbrains.dokka")
+    apply(plugin = "maven-publish")
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+
+    kotlin {
+        jvmToolchain(17)
+    }
 
     tasks {
-        withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            kotlinOptions {
-                jvmTarget = JavaVersion.VERSION_17.toString()
-            }
-        }
-
         test {
             useJUnitPlatform()
         }

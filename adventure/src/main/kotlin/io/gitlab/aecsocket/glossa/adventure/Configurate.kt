@@ -1,6 +1,6 @@
-package com.gitlab.aecsocket.glossa.adventure
+package io.gitlab.aecsocket.glossa.adventure
 
-import com.gitlab.aecsocket.glossa.core.*
+import io.gitlab.aecsocket.glossa.core.*
 import net.kyori.adventure.serializer.configurate4.ConfigurateComponentSerializer
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.ConfigurationOptions

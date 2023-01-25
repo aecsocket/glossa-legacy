@@ -1,4 +1,4 @@
-package com.gitlab.aecsocket.glossa.core
+package io.gitlab.aecsocket.glossa.core
 
 private const val KEY_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789_"
 

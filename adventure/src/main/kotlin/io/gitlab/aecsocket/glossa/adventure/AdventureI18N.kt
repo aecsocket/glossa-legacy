@@ -1,7 +1,7 @@
-package com.gitlab.aecsocket.glossa.adventure
+package io.gitlab.aecsocket.glossa.adventure
 
-import com.gitlab.aecsocket.glossa.core.I18N
-import com.gitlab.aecsocket.glossa.core.I18NArgs
+import io.gitlab.aecsocket.glossa.core.I18N
+import io.gitlab.aecsocket.glossa.core.I18NArgs
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.*
 import net.kyori.adventure.text.JoinConfiguration

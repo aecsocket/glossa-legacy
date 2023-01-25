@@ -1,4 +1,4 @@
-package com.gitlab.aecsocket.glossa.core
+package io.gitlab.aecsocket.glossa.core
 
 import java.util.*
 import kotlin.collections.ArrayList

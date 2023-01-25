@@ -1,4 +1,4 @@
-package com.gitlab.aecsocket.glossa.core
+package io.gitlab.aecsocket.glossa.core
 
 /**
  * An object which can be expressed by a message created by an [I18N] instance.

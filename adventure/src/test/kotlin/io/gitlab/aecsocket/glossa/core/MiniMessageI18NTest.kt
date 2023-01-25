@@ -1,9 +1,9 @@
-package com.gitlab.aecsocket.glossa.core
+package io.gitlab.aecsocket.glossa.core
 
-import com.gitlab.aecsocket.glossa.adventure.KeyStyleNode
-import com.gitlab.aecsocket.glossa.adventure.MiniMessageI18N
-import com.gitlab.aecsocket.glossa.adventure.ansi
-import com.gitlab.aecsocket.glossa.adventure.load
+import io.gitlab.aecsocket.glossa.adventure.KeyStyleNode
+import io.gitlab.aecsocket.glossa.adventure.MiniMessageI18N
+import io.gitlab.aecsocket.glossa.adventure.ansi
+import io.gitlab.aecsocket.glossa.adventure.load
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor.*
@@ -38,6 +38,8 @@ class MiniMessageI18NTest {
                 node("section", "gray")
             }
         })
+
+        translations.add(TranslationNode.Root(us))
 
         format {
             node("formatted") {
